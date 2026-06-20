@@ -144,6 +144,7 @@ export default function RootLayout() {
             <Stack.Screen name="cv" options={{ presentation: 'modal' }} />
             <Stack.Screen name="application/new" options={{ presentation: 'modal' }} />
             <Stack.Screen name="application/[id]" />
+            <Stack.Screen name="jobs/index" options={{ presentation: 'modal' }} />
             <Stack.Screen name="interview/new" options={{ presentation: 'modal' }} />
             <Stack.Screen name="interview/[id]" />
           </Stack>

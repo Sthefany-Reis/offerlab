@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
 import { SectionCard } from '@/components/SectionCard';
@@ -17,13 +17,22 @@ import { useStore } from '@/lib/store';
 
 export default function NewApplication() {
   const [muted] = useThemeColor(['muted']);
+  const params = useLocalSearchParams();
   const analysis = useStore((s) => s.analysis);
   const profile = useStore((s) => s.profile);
   const addApplication = useStore((s) => s.addApplication);
 
-  const [jobTitle, setJobTitle] = useState('');
-  const [company, setCompany] = useState('');
-  const [jobDescription, setJobDescription] = useState('');
+  const [jobTitle, setJobTitle] = useState(
+    Array.isArray(params.jobTitle) ? (params.jobTitle[0] ?? '') : (params.jobTitle ?? ''),
+  );
+  const [company, setCompany] = useState(
+    Array.isArray(params.company) ? (params.company[0] ?? '') : (params.company ?? ''),
+  );
+  const [jobDescription, setJobDescription] = useState(
+    Array.isArray(params.jobDescription)
+      ? (params.jobDescription[0] ?? '')
+      : (params.jobDescription ?? ''),
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

@@ -1,5 +1,5 @@
-import { Briefcase, Plus, Send } from 'lucide-react-native';
-import { Button, Text } from 'heroui-native';
+import { Briefcase, Plus, Search, Send } from 'lucide-react-native';
+import { Button, Text, useThemeColor } from 'heroui-native';
 import { Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,6 +30,7 @@ const STATUS_LABEL: Record<ApplicationStatus, string> = {
 
 export default function ApplicationsTab() {
   const insets = useSafeAreaInsets();
+  const [foreground] = useThemeColor(['foreground']);
   const analysis = useStore((s) => s.analysis);
   const applications = useStore((s) => s.applications);
 
@@ -58,10 +59,17 @@ export default function ApplicationsTab() {
             <EmptyState
               icon={Briefcase}
               title="No applications yet"
-              description="Paste a job description and OfferLab tailors your CV, writes a cover letter and scores your match."
-              actionLabel="Tailor an application"
-              onAction={() => router.push('/application/new')}
+              description="Search live jobs or paste a job description, and OfferLab tailors your CV, writes a cover letter and scores your match."
+              actionLabel="Search live jobs"
+              onAction={() => router.push('/jobs')}
             />
+            <Button
+              variant="tertiary"
+              className="mt-1"
+              onPress={() => router.push('/application/new')}
+            >
+              <Button.Label>Paste a job description</Button.Label>
+            </Button>
           </SectionCard>
         ) : (
           applications.map((app) => (
@@ -97,12 +105,16 @@ export default function ApplicationsTab() {
 
       {applications.length > 0 ? (
         <View
-          className="absolute inset-x-0 bottom-0 px-4"
+          className="absolute inset-x-0 bottom-0 gap-2 px-4"
           style={{ paddingBottom: insets.bottom + 12 }}
         >
-          <Button onPress={() => router.push('/application/new')}>
-            <Plus color="#fff" size={18} />
-            <Button.Label>New tailored application</Button.Label>
+          <Button onPress={() => router.push('/jobs')}>
+            <Search color="#fff" size={18} />
+            <Button.Label>Search live jobs</Button.Label>
+          </Button>
+          <Button variant="tertiary" onPress={() => router.push('/application/new')}>
+            <Plus color={foreground} size={18} />
+            <Button.Label>Paste a job description</Button.Label>
           </Button>
         </View>
       ) : null}
