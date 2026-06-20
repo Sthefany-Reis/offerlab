@@ -1,6 +1,7 @@
 import {
   AlertCircle,
   CheckCircle2,
+  FileClock,
   FileText,
   Minus,
   RefreshCw,
@@ -176,6 +177,10 @@ export default function ProfileTab() {
         <Button variant="secondary" onPress={() => router.push('/cv')}>
           <RefreshCw color={accent} size={18} />
           <Button.Label>Update CV & re-analyze</Button.Label>
+        </Button>
+        <Button variant="secondary" onPress={() => router.push('/cv-history')}>
+          <FileClock color={accent} size={18} />
+          <Button.Label>CV history</Button.Label>
         </Button>
         <Button variant="tertiary" onPress={confirmReset}>
           <Trash2 color={muted} size={18} />

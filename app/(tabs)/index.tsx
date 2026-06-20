@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  FileClock,
   FileText,
   GraduationCap,
   MessagesSquare,
@@ -269,6 +270,12 @@ export default function Dashboard() {
           title="CV & analysis"
           subtitle="Upload, paste, re-analyze"
           onPress={() => router.push('/cv')}
+        />
+        <ActionRow
+          icon={FileClock}
+          title="CV history"
+          subtitle="Revisit past analyses"
+          onPress={() => router.push('/cv-history')}
         />
         <ActionRow
           icon={GraduationCap}

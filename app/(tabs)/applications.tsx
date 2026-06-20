@@ -1,13 +1,25 @@
-import { Briefcase, Plus, Search, Send, Target } from 'lucide-react-native';
+import {
+  Briefcase,
+  Check,
+  ChevronDown,
+  ExternalLink,
+  Linkedin,
+  Plus,
+  Search,
+  Send,
+  Target,
+  Trash2,
+} from 'lucide-react-native';
 import { Button, Text, useThemeColor } from 'heroui-native';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/EmptyState';
 import { SectionCard } from '@/components/SectionCard';
 import { Tag } from '@/components/Tag';
-import { scoreColor } from '@/lib/format';
+import { indeedJobUrl, linkedinJobUrl } from '@/lib/jobs';
 import { useStore } from '@/lib/store';
 import type { ApplicationStatus } from '@/lib/types';
 
@@ -28,11 +40,31 @@ const STATUS_LABEL: Record<ApplicationStatus, string> = {
   rejected: 'Rejected',
 };
 
+const STATUS_ORDER: ApplicationStatus[] = ['draft', 'applied', 'interview', 'offer', 'rejected'];
+
 export default function ApplicationsTab() {
   const insets = useSafeAreaInsets();
-  const [foreground] = useThemeColor(['foreground']);
+  const [foreground, muted, accent] = useThemeColor(['foreground', 'muted', 'accent']);
   const analysis = useStore((s) => s.analysis);
   const applications = useStore((s) => s.applications);
+  const updateApplicationStatus = useStore((s) => s.updateApplicationStatus);
+  const removeApplication = useStore((s) => s.removeApplication);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  const withdraw = (id: string, title: string) => {
+    const doRemove = () => {
+      removeApplication(id);
+      setOpenMenuId(null);
+    };
+    if (Platform.OS === 'web') {
+      doRemove();
+      return;
+    }
+    Alert.alert('Withdraw application?', `Remove your application for ${title}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Withdraw', style: 'destructive', onPress: doRemove },
+    ]);
+  };
 
   if (!analysis) {
     return (
@@ -54,6 +86,12 @@ export default function ApplicationsTab() {
         contentContainerStyle={{ padding: 16, paddingBottom: 96 }}
         showsVerticalScrollIndicator={false}
       >
+        <Text className="text-foreground mb-1 text-xl font-bold">Applications</Text>
+        <Text className="text-muted mb-4 text-sm leading-5">
+          Track every role you&apos;ve applied to and update its status as you move through the
+          process.
+        </Text>
+
         {applications.length === 0 ? (
           <SectionCard>
             <EmptyState
@@ -76,32 +114,88 @@ export default function ApplicationsTab() {
           </SectionCard>
         ) : (
           applications.map((app) => (
-            <Pressable
-              key={app.id}
-              onPress={() => router.push({ pathname: '/application/[id]', params: { id: app.id } })}
-              className="mb-3"
-            >
+            <View key={app.id} className="mb-3">
               <SectionCard>
-                <View className="flex-row items-start justify-between">
-                  <View className="flex-1 pr-3">
-                    <Text className="text-foreground text-base font-semibold">{app.jobTitle}</Text>
-                    <Text className="text-muted text-sm">{app.company}</Text>
+                <Pressable
+                  onPress={() =>
+                    router.push({ pathname: '/application/[id]', params: { id: app.id } })
+                  }
+                >
+                  <View className="flex-row items-start justify-between">
+                    <View className="flex-1 pr-3">
+                      <Text className="text-foreground text-base font-semibold">
+                        {app.jobTitle}
+                      </Text>
+                      <Text className="text-muted text-sm">{app.company}</Text>
+                    </View>
+                    <View className="items-end">
+                      <Text className={`text-xl font-bold ${scoreText(app.matchScore)}`}>
+                        {app.matchScore}%
+                      </Text>
+                      <Text className="text-muted text-xs">match</Text>
+                    </View>
                   </View>
-                  <View className="items-end">
-                    <Text className={`text-xl font-bold ${scoreColor(app.matchScore)}`}>
-                      {app.matchScore}%
-                    </Text>
-                    <Text className="text-muted text-xs">match</Text>
-                  </View>
-                </View>
-                <View className="mt-3 flex-row items-center justify-between">
+                </Pressable>
+
+                {/* Status selector */}
+                <Pressable
+                  onPress={() => setOpenMenuId(openMenuId === app.id ? null : app.id)}
+                  className="border-border mt-3 flex-row items-center justify-between self-start rounded-lg border px-3 py-1.5"
+                >
                   <Tag label={STATUS_LABEL[app.status]} tone={STATUS_TONE[app.status]} />
-                  <Text className="text-muted text-xs">
-                    {app.highlightedSkills.length} matched skills
-                  </Text>
+                  <ChevronDown color={muted} size={16} />
+                </Pressable>
+
+                {openMenuId === app.id ? (
+                  <View className="border-border bg-surface mt-2 overflow-hidden rounded-xl border">
+                    {STATUS_ORDER.map((s) => (
+                      <Pressable
+                        key={s}
+                        onPress={() => {
+                          updateApplicationStatus(app.id, s);
+                          setOpenMenuId(null);
+                        }}
+                        className="border-border flex-row items-center justify-between border-b px-3 py-2.5 last:border-b-0 active:opacity-70"
+                      >
+                        <Text className="text-foreground text-sm">{STATUS_LABEL[s]}</Text>
+                        {app.status === s ? <Check color={accent} size={16} /> : null}
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : null}
+
+                {/* External links + withdraw */}
+                <View className="mt-3 gap-2">
+                  <View className="flex-row gap-2">
+                    <Pressable
+                      onPress={() =>
+                        void Linking.openURL(linkedinJobUrl(app.jobTitle, app.company))
+                      }
+                      className="border-border flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border py-2 active:opacity-70"
+                    >
+                      <Linkedin color="#0A66C2" size={15} />
+                      <Text className="text-xs font-semibold" style={{ color: '#0A66C2' }}>
+                        View on LinkedIn
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => void Linking.openURL(indeedJobUrl(app.jobTitle, app.company))}
+                      className="border-border flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border py-2 active:opacity-70"
+                    >
+                      <ExternalLink color={foreground} size={14} />
+                      <Text className="text-foreground text-xs font-semibold">View on Indeed</Text>
+                    </Pressable>
+                  </View>
+                  <Pressable
+                    onPress={() => withdraw(app.id, app.jobTitle)}
+                    className="flex-row items-center justify-center gap-1.5 py-1.5 active:opacity-70"
+                  >
+                    <Trash2 color={muted} size={14} />
+                    <Text className="text-muted text-xs font-semibold">Withdraw</Text>
+                  </Pressable>
                 </View>
               </SectionCard>
-            </Pressable>
+            </View>
           ))
         )}
       </ScrollView>
@@ -133,4 +227,10 @@ export default function ApplicationsTab() {
       ) : null}
     </View>
   );
+}
+
+function scoreText(score: number): string {
+  if (score >= 75) return 'text-positive';
+  if (score >= 50) return 'text-caution';
+  return 'text-danger';
 }

@@ -186,3 +186,15 @@ export interface ChatMessage {
   text: string;
   createdAt: number;
 }
+
+// A snapshot of a past CV analysis, for the CV history list.
+export interface CvHistoryEntry {
+  id: string;
+  detectedRole: string;
+  seniority: string;
+  targetRole: string; // empty string when none set
+  overallScore: number;
+  analysis: CvAnalysis;
+  profile: CvProfile;
+  createdAt: number;
+}

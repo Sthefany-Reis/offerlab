@@ -3,12 +3,15 @@
 
 const API_URL = 'https://www.arbeitnow.com/api/job-board-api';
 
+export type WorkType = 'any' | 'remote' | 'hybrid' | 'onsite';
+
 export interface JobListing {
   id: string;
   title: string;
   company: string;
   location: string;
   remote: boolean;
+  workType: Exclude<WorkType, 'any'>;
   tags: string[];
   jobTypes: string[];
   description: string; // plain text, stripped of HTML
@@ -53,6 +56,15 @@ function stripHtml(html: string): string {
     .trim();
 }
 
+function deriveWorkType(raw: RawJob): Exclude<WorkType, 'any'> {
+  if (raw.remote) return 'remote';
+  const haystack = `${raw.title ?? ''} ${(raw.tags ?? []).join(' ')} ${(raw.job_types ?? []).join(
+    ' ',
+  )}`.toLowerCase();
+  if (haystack.includes('hybrid')) return 'hybrid';
+  return 'onsite';
+}
+
 function mapJob(raw: RawJob, index: number): JobListing {
   return {
     id: raw.slug || `${raw.company_name ?? 'job'}-${index}`,
@@ -60,6 +72,7 @@ function mapJob(raw: RawJob, index: number): JobListing {
     company: (raw.company_name ?? '').trim() || 'Unknown company',
     location: (raw.location ?? '').trim(),
     remote: Boolean(raw.remote),
+    workType: deriveWorkType(raw),
     tags: Array.isArray(raw.tags) ? raw.tags.filter(Boolean).slice(0, 8) : [],
     jobTypes: Array.isArray(raw.job_types) ? raw.job_types.filter(Boolean) : [],
     description: stripHtml(raw.description ?? ''),
@@ -71,7 +84,7 @@ function mapJob(raw: RawJob, index: number): JobListing {
 interface SearchParams {
   query?: string;
   location?: string;
-  remoteOnly?: boolean;
+  workType?: WorkType;
   signal?: AbortSignal;
 }
 
@@ -87,7 +100,7 @@ function matches(job: JobListing, query: string, location: string): boolean {
 }
 
 export async function searchJobs(params: SearchParams = {}): Promise<JobListing[]> {
-  const { query = '', location = '', remoteOnly = false, signal } = params;
+  const { query = '', location = '', workType = 'any', signal } = params;
 
   let res: Response;
   try {
@@ -119,7 +132,19 @@ export async function searchJobs(params: SearchParams = {}): Promise<JobListing[
   const loc = location.trim().toLowerCase();
 
   return all
-    .filter((job) => (remoteOnly ? job.remote : true))
+    .filter((job) => (workType === 'any' ? true : job.workType === workType))
     .filter((job) => matches(job, q, loc))
     .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/** Build a LinkedIn jobs search URL for a given role + company. */
+export function linkedinJobUrl(title: string, company?: string): string {
+  const keywords = [title, company].filter(Boolean).join(' ');
+  return `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(keywords)}`;
+}
+
+/** Build an Indeed jobs search URL for a given role + company. */
+export function indeedJobUrl(title: string, company?: string): string {
+  const keywords = [title, company].filter(Boolean).join(' ');
+  return `https://www.indeed.com/jobs?q=${encodeURIComponent(keywords)}`;
 }

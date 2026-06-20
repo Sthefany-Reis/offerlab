@@ -7,6 +7,7 @@ import type {
   ApplicationStatus,
   ChatMessage,
   CvAnalysis,
+  CvHistoryEntry,
   CvProfile,
   InterviewAnswerFeedback,
   InterviewSession,
@@ -31,10 +32,14 @@ interface OfferLabState {
   matchResult: JobMatchResult | null;
   rebuiltCv: RebuiltCv | null;
   chats: Record<string, ChatMessage[]>;
+  cvHistory: CvHistoryEntry[];
 
   setProfile: (profile: CvProfile) => void;
   clearProfile: () => void;
   setAnalysis: (analysis: CvAnalysis) => void;
+  recordCvHistory: (entry: { analysis: CvAnalysis; profile: CvProfile }) => void;
+  restoreCvHistory: (id: string) => void;
+  removeCvHistory: (id: string) => void;
   setRoadmap: (roadmap: Roadmap) => void;
   toggleRoadmapStep: (stepId: string) => void;
 
@@ -78,11 +83,39 @@ export const useStore = create<OfferLabState>()(
       matchResult: null,
       rebuiltCv: null,
       chats: {},
+      cvHistory: [],
 
       setProfile: (profile) => set({ profile }),
       clearProfile: () =>
         set({ profile: null, analysis: null, matchResult: null, rebuiltCv: null }),
       setAnalysis: (analysis) => set({ analysis }),
+      recordCvHistory: ({ analysis, profile }) =>
+        set((state) => {
+          const entry: CvHistoryEntry = {
+            id: `cv-${Date.now()}`,
+            detectedRole: analysis.detectedRole,
+            seniority: analysis.seniority,
+            targetRole: profile.targetRole,
+            overallScore: analysis.overallScore,
+            analysis,
+            profile,
+            createdAt: Date.now(),
+          };
+          return { cvHistory: [entry, ...state.cvHistory].slice(0, 50) };
+        }),
+      restoreCvHistory: (id) =>
+        set((state) => {
+          const entry = state.cvHistory.find((e) => e.id === id);
+          if (!entry) return state;
+          return {
+            profile: entry.profile,
+            analysis: entry.analysis,
+            matchResult: null,
+            rebuiltCv: null,
+          };
+        }),
+      removeCvHistory: (id) =>
+        set((state) => ({ cvHistory: state.cvHistory.filter((e) => e.id !== id) })),
       setRoadmap: (roadmap) => set({ roadmap }),
       toggleRoadmapStep: (stepId) =>
         set((state) => {
@@ -148,6 +181,7 @@ export const useStore = create<OfferLabState>()(
           matchResult: null,
           rebuiltCv: null,
           chats: {},
+          cvHistory: [],
         }),
     }),
     {
@@ -163,6 +197,7 @@ export const useStore = create<OfferLabState>()(
         matchResult: state.matchResult,
         rebuiltCv: state.rebuiltCv,
         chats: state.chats,
+        cvHistory: state.cvHistory,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated();
