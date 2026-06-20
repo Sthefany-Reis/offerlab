@@ -11,11 +11,10 @@ import type {
   Specialist,
 } from '@/lib/types';
 
-const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
-const MODEL = 'gemini-2.0-flash';
-const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+const API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
+const MODEL = 'gpt-4o-mini';
+const ENDPOINT = 'https://api.openai.com/v1/chat/completions';
 
-// Export name retained so consuming screens need no changes; this is the Gemini client.
 export class OpenAIError extends Error {}
 
 interface ChatMessage {
@@ -49,28 +48,36 @@ function extractJson(text: string): string {
   return text.trim();
 }
 
+function extractOpenAiContent(raw: unknown): string | undefined {
+  if (
+    typeof raw === 'object' &&
+    raw !== null &&
+    'choices' in raw &&
+    Array.isArray(raw.choices) &&
+    raw.choices.length > 0 &&
+    typeof raw.choices[0] === 'object' &&
+    raw.choices[0] !== null &&
+    'message' in raw.choices[0] &&
+    typeof raw.choices[0].message === 'object' &&
+    raw.choices[0].message !== null &&
+    'content' in raw.choices[0].message &&
+    typeof raw.choices[0].message.content === 'string'
+  ) {
+    return raw.choices[0].message.content;
+  }
+  return undefined;
+}
+
 async function chatJson<T>(messages: ChatMessage[]): Promise<T> {
   if (!API_KEY) {
-    throw new OpenAIError('Missing Gemini API key. Add EXPO_PUBLIC_GEMINI_API_KEY.');
+    throw new OpenAIError('Missing OpenAI API key. Add EXPO_PUBLIC_OPENAI_API_KEY.');
   }
 
-  const systemText = messages
-    .filter((m) => m.role === 'system')
-    .map((m) => m.content)
-    .join('\n\n');
-  const userText = messages
-    .filter((m) => m.role === 'user')
-    .map((m) => m.content)
-    .join('\n\n');
-
   const body = JSON.stringify({
-    systemInstruction: systemText ? { parts: [{ text: systemText }] } : undefined,
-    contents: [{ role: 'user', parts: [{ text: userText }] }],
-    generationConfig: {
-      temperature: 0.5,
-      maxOutputTokens: 4096,
-      responseMimeType: 'application/json',
-    },
+    model: MODEL,
+    temperature: 0.5,
+    response_format: { type: 'json_object' },
+    messages: messages.map((m) => ({ role: m.role, content: m.content })),
   });
 
   let response: Response | undefined;
@@ -80,7 +87,7 @@ async function chatJson<T>(messages: ChatMessage[]): Promise<T> {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-goog-api-key': API_KEY,
+          Authorization: `Bearer ${API_KEY}`,
         },
         body,
       });
@@ -90,7 +97,7 @@ async function chatJson<T>(messages: ChatMessage[]): Promise<T> {
         await sleep(600 * attempt);
         continue;
       }
-      throw new OpenAIError('Network error reaching Gemini. Check your connection and try again.');
+      throw new OpenAIError('Network error reaching OpenAI. Check your connection and try again.');
     }
 
     // Retry on rate limit (429) and transient server errors (500/502/503/504).
@@ -113,45 +120,23 @@ async function chatJson<T>(messages: ChatMessage[]): Promise<T> {
   }
 
   if (!response) {
-    throw new OpenAIError('Network error reaching Gemini. Check your connection and try again.');
+    throw new OpenAIError('Network error reaching OpenAI. Check your connection and try again.');
   }
 
   if (!response.ok) {
     const text = await response.text().catch(() => '');
-    if (response.status === 400 || response.status === 401 || response.status === 403)
-      throw new OpenAIError('Invalid Gemini API key.');
+    if (response.status === 401 || response.status === 403)
+      throw new OpenAIError('Invalid OpenAI API key.');
     if (response.status === 429)
       throw new OpenAIError(
-        'Gemini rate limit reached. The free tier allows a limited number of requests per minute — wait about a minute and try again.',
+        'OpenAI rate limit or quota reached. Wait a moment and try again, or check your account billing.',
       );
-    throw new OpenAIError(`Gemini request failed (${response.status}). ${text.slice(0, 120)}`);
+    throw new OpenAIError(`OpenAI request failed (${response.status}). ${text.slice(0, 120)}`);
   }
 
   const raw = (await response.json()) as unknown;
-
-  let content: string | undefined;
-  if (
-    typeof raw === 'object' &&
-    raw !== null &&
-    'candidates' in raw &&
-    Array.isArray(raw.candidates) &&
-    raw.candidates.length > 0 &&
-    typeof raw.candidates[0] === 'object' &&
-    raw.candidates[0] !== null &&
-    'content' in raw.candidates[0] &&
-    typeof raw.candidates[0].content === 'object' &&
-    raw.candidates[0].content !== null &&
-    'parts' in raw.candidates[0].content &&
-    Array.isArray(raw.candidates[0].content.parts) &&
-    raw.candidates[0].content.parts.length > 0 &&
-    typeof raw.candidates[0].content.parts[0] === 'object' &&
-    raw.candidates[0].content.parts[0] !== null &&
-    'text' in raw.candidates[0].content.parts[0] &&
-    typeof raw.candidates[0].content.parts[0].text === 'string'
-  ) {
-    content = raw.candidates[0].content.parts[0].text;
-  }
-  if (!content) throw new OpenAIError('Gemini returned an empty response.');
+  const content = extractOpenAiContent(raw);
+  if (!content) throw new OpenAIError('OpenAI returned an empty response.');
 
   try {
     const parsed: unknown = JSON.parse(extractJson(content));
@@ -472,7 +457,7 @@ export async function chatWithSpecialist(input: {
   targetRole: string;
 }): Promise<string> {
   if (!API_KEY) {
-    throw new OpenAIError('Missing Gemini API key. Add EXPO_PUBLIC_GEMINI_API_KEY.');
+    throw new OpenAIError('Missing OpenAI API key. Add EXPO_PUBLIC_OPENAI_API_KEY.');
   }
 
   const context = input.analysis
@@ -487,14 +472,19 @@ export async function chatWithSpecialist(input: {
     ', ',
   )}. ${input.specialist.bio} You are mentoring someone over chat. ${context} Reply in a warm, concise, practical first-person voice (2-5 short sentences). Give specific, actionable advice. Do not use markdown headers or bullet symbols.`;
 
-  const historyText = input.history
-    .map((m) => `${m.role === 'user' ? 'Mentee' : input.specialist.name}: ${m.text}`)
-    .join('\n');
+  const chatMessages = [
+    { role: 'system' as const, content: systemText },
+    ...input.history.map((m) => ({
+      role: m.role === 'user' ? ('user' as const) : ('assistant' as const),
+      content: m.text,
+    })),
+  ];
 
   const body = JSON.stringify({
-    systemInstruction: { parts: [{ text: systemText }] },
-    contents: [{ role: 'user', parts: [{ text: historyText }] }],
-    generationConfig: { temperature: 0.7, maxOutputTokens: 600 },
+    model: MODEL,
+    temperature: 0.7,
+    max_tokens: 600,
+    messages: chatMessages,
   });
 
   let response: Response | undefined;
@@ -502,7 +492,7 @@ export async function chatWithSpecialist(input: {
     try {
       response = await fetch(ENDPOINT, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': API_KEY },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` },
         body,
       });
     } catch {
@@ -510,7 +500,7 @@ export async function chatWithSpecialist(input: {
         await sleep(600 * attempt);
         continue;
       }
-      throw new OpenAIError('Network error reaching Gemini. Check your connection and try again.');
+      throw new OpenAIError('Network error reaching OpenAI. Check your connection and try again.');
     }
 
     const isTransient =
@@ -529,39 +519,18 @@ export async function chatWithSpecialist(input: {
   }
 
   if (!response) {
-    throw new OpenAIError('Network error reaching Gemini. Check your connection and try again.');
+    throw new OpenAIError('Network error reaching OpenAI. Check your connection and try again.');
   }
   if (!response.ok) {
-    if (response.status === 400 || response.status === 401 || response.status === 403)
-      throw new OpenAIError('Invalid Gemini API key.');
+    if (response.status === 401 || response.status === 403)
+      throw new OpenAIError('Invalid OpenAI API key.');
     if (response.status === 429)
-      throw new OpenAIError('Rate limit reached. Wait about a minute and try again.');
+      throw new OpenAIError('Rate limit or quota reached. Wait a moment and try again.');
     throw new OpenAIError(`Request failed (${response.status}).`);
   }
 
   const raw = (await response.json()) as unknown;
-  let content: string | undefined;
-  if (
-    typeof raw === 'object' &&
-    raw !== null &&
-    'candidates' in raw &&
-    Array.isArray(raw.candidates) &&
-    raw.candidates.length > 0 &&
-    typeof raw.candidates[0] === 'object' &&
-    raw.candidates[0] !== null &&
-    'content' in raw.candidates[0] &&
-    typeof raw.candidates[0].content === 'object' &&
-    raw.candidates[0].content !== null &&
-    'parts' in raw.candidates[0].content &&
-    Array.isArray(raw.candidates[0].content.parts) &&
-    raw.candidates[0].content.parts.length > 0 &&
-    typeof raw.candidates[0].content.parts[0] === 'object' &&
-    raw.candidates[0].content.parts[0] !== null &&
-    'text' in raw.candidates[0].content.parts[0] &&
-    typeof raw.candidates[0].content.parts[0].text === 'string'
-  ) {
-    content = raw.candidates[0].content.parts[0].text;
-  }
+  const content = extractOpenAiContent(raw);
   if (!content) throw new OpenAIError('The specialist did not respond. Please try again.');
   return content.trim();
 }
