@@ -93,6 +93,8 @@ export interface InterviewAnswerFeedback {
   strengths: string[];
   improvements: string[];
   suggestedAnswer: string;
+  fullAnswer: string; // complete, ready-to-say model answer
+  tips: string[]; // how-to-answer tips for this question
 }
 
 export interface InterviewSession {

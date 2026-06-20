@@ -696,6 +696,9 @@ export function evaluateAnswer(input: {
 
     const suggestedAnswer = `Strong example (STAR): "In my last role (Situation), I owned ${input.question.category === 'technical' ? 'a critical technical challenge' : 'a key initiative'} (Task). I ${hasActionVerb ? answer.split(/[.!?]/)[0].trim() || 'led the effort end to end' : 'led the effort end to end, coordinated stakeholders, and shipped iteratively'} (Action). As a result, we improved the outcome by a measurable margin, e.g. 25% faster delivery or higher quality (Result)." Keep it specific, quantified, and relevant to the ${input.role} role.`;
 
+    const fullAnswer = buildFullAnswer(input.question, input.role);
+    const tips = buildAnswerTips(input.question);
+
     return {
       questionId: input.question.id,
       userAnswer: input.answer,
@@ -703,8 +706,76 @@ export function evaluateAnswer(input: {
       strengths: strengths.slice(0, 3),
       improvements: improvements.slice(0, 4),
       suggestedAnswer,
+      fullAnswer,
+      tips,
     } satisfies InterviewAnswerFeedback;
   });
+}
+
+function buildFullAnswer(question: InterviewQuestion, role: string): string {
+  switch (question.category) {
+    case 'behavioral':
+      return [
+        `Situation — "In my previous role as a ${role}, our team faced a deadline-critical project where requirements kept shifting and stakeholders were misaligned."`,
+        `Task — "I was responsible for getting the project back on track and keeping everyone informed without slipping the launch date."`,
+        `Action — "I broke the work into a clear, prioritized backlog, ran short daily check-ins to surface blockers early, and negotiated a phased scope so we could ship the critical features first. I documented decisions so nobody was guessing."`,
+        `Result — "We delivered the core release on time, cut rework by roughly 30%, and the phased plan became the team's default approach for tight deadlines afterward."`,
+      ].join('\n\n');
+    case 'technical':
+      return [
+        `Frame it — "When I approach ${question.whatTheyLookFor.toLowerCase().includes('design') ? 'a design problem' : 'this kind of problem'}, I start by clarifying the constraints and the success criteria before writing any code."`,
+        `Reasoning — "I outline the trade-offs out loud: correctness, performance, and maintainability. For example, I'd compare the simple approach against the scalable one and explain when each is the right call."`,
+        `Concrete example — "In one project I improved a slow path by profiling first, finding the real bottleneck, then applying the fix — which cut response time by about 40% without adding complexity."`,
+        `Close — "I'd verify with tests and monitoring, and note what I'd revisit if requirements changed. As a ${role}, I value solutions the team can actually maintain."`,
+      ].join('\n\n');
+    case 'role-specific':
+      return [
+        `Direct answer — "For a ${role}, the most important thing here is to tie my approach back to outcomes the business cares about."`,
+        `Evidence — "Concretely, I've done this by owning a workflow end to end: I identified the gap, proposed the fix, and measured the result so the impact was undeniable."`,
+        `Impact — "That delivered a measurable win — for instance reducing a manual process from days to hours — which is exactly the kind of value I'd bring to this role."`,
+      ].join('\n\n');
+    default:
+      return [
+        `Show the fit — "I'm drawn to this role because the mission and the problems align with what I do best, and I've researched how the team works."`,
+        `Back it with substance — "Specifically, my experience as a ${role} maps directly to your priorities: I've delivered similar results and can ramp quickly."`,
+        `Forward-looking — "What excites me most is contributing on day one while growing into bigger ownership over time."`,
+      ].join('\n\n');
+  }
+}
+
+function buildAnswerTips(question: InterviewQuestion): string[] {
+  const base: string[] = [];
+  switch (question.category) {
+    case 'behavioral':
+      base.push(
+        'Use the STAR structure: Situation, Task, Action, Result — keep Situation/Task short and spend most time on Action and Result.',
+        'Pick a real, specific story rather than speaking in generalities.',
+        'End with a measurable result (%, time saved, revenue, or a clear outcome).',
+      );
+      break;
+    case 'technical':
+      base.push(
+        'Think out loud — interviewers score your reasoning, not just the final answer.',
+        'Clarify constraints and assumptions before diving in.',
+        'Call out trade-offs (performance vs. simplicity) and say which you would choose and why.',
+      );
+      break;
+    case 'role-specific':
+      base.push(
+        'Tie your answer directly to the responsibilities of this role.',
+        'Lead with the outcome, then explain how you achieved it.',
+        'Use one concrete example with a quantified result.',
+      );
+      break;
+    default:
+      base.push(
+        'Show you researched the company and connect it to your motivation.',
+        'Balance enthusiasm with concrete evidence of fit.',
+        'Be authentic — avoid generic answers that could apply to any company.',
+      );
+  }
+  base.push('Aim for 60–120 seconds: enough detail to be credible, short enough to stay sharp.');
+  return base.slice(0, 4);
 }
 
 // ---- matchJobs ------------------------------------------------------------

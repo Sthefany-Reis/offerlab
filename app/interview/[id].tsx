@@ -259,11 +259,28 @@ function FeedbackBlock({ feedback }: { feedback: InterviewAnswerFeedback }) {
           ))}
         </View>
       ) : null}
+      {feedback.tips.length ? (
+        <View className="bg-brand-soft rounded-xl p-3">
+          <View className="flex-row items-center gap-1.5">
+            <Lightbulb color={accent} size={14} />
+            <Text className="text-brand text-xs font-semibold">How to answer this</Text>
+          </View>
+          {feedback.tips.map((t) => (
+            <Text key={t} className="text-foreground mt-1.5 text-xs leading-5">
+              • {t}
+            </Text>
+          ))}
+        </View>
+      ) : null}
       <View className="bg-violet-soft rounded-xl p-3">
         <View className="flex-row items-center gap-1.5">
-          <Lightbulb color={accent} size={14} />
-          <Text className="text-violet text-xs font-semibold">Model answer</Text>
+          <Sparkles color={accent} size={14} />
+          <Text className="text-violet text-xs font-semibold">Full sample answer</Text>
         </View>
+        <Text className="text-foreground mt-1.5 text-xs leading-5">{feedback.fullAnswer}</Text>
+      </View>
+      <View className="bg-default/60 rounded-xl p-3">
+        <Text className="text-muted text-xs font-semibold">Quick tip</Text>
         <Text className="text-foreground mt-1.5 text-xs leading-5">{feedback.suggestedAnswer}</Text>
       </View>
     </View>
