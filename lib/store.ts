@@ -22,8 +22,14 @@ interface OfferLabState {
   hasHydrated: boolean;
   setHasHydrated: () => void;
   account: Account | null;
-  setAccount: (account: { name: string; email: string }) => void;
-  clearAccount: () => void;
+  accounts: Account[];
+  signUp: (input: { name: string; email: string; password: string }) => {
+    ok: boolean;
+    error?: string;
+  };
+  signIn: (input: { email: string; password: string }) => { ok: boolean; error?: string };
+  signOut: () => void;
+  updateAccount: (input: { name: string; email: string }) => { ok: boolean; error?: string };
   profile: CvProfile | null;
   analysis: CvAnalysis | null;
   roadmap: Roadmap | null;
@@ -66,15 +72,73 @@ export const useStore = create<OfferLabState>()(
       hasHydrated: false,
       setHasHydrated: () => set({ hasHydrated: true }),
       account: null,
-      setAccount: ({ name, email }) =>
-        set((state) => ({
-          account: {
-            name: name.trim(),
-            email: email.trim(),
-            createdAt: state.account?.createdAt ?? Date.now(),
-          },
-        })),
-      clearAccount: () => set({ account: null }),
+      accounts: [],
+      signUp: ({ name, email, password }) => {
+        const trimmedEmail = email.trim().toLowerCase();
+        const trimmedName = name.trim();
+        let result: { ok: boolean; error?: string } = { ok: true };
+        set((state) => {
+          const exists = state.accounts.some((a) => a.email.toLowerCase() === trimmedEmail);
+          if (exists) {
+            result = { ok: false, error: 'An account with this email already exists.' };
+            return state;
+          }
+          const account: Account = {
+            name: trimmedName,
+            email: trimmedEmail,
+            password,
+            createdAt: Date.now(),
+          };
+          return { account, accounts: [...state.accounts, account] };
+        });
+        return result;
+      },
+      signIn: ({ email, password }) => {
+        const trimmedEmail = email.trim().toLowerCase();
+        let result: { ok: boolean; error?: string } = { ok: true };
+        set((state) => {
+          const match = state.accounts.find((a) => a.email.toLowerCase() === trimmedEmail);
+          if (!match) {
+            result = { ok: false, error: 'No account found with this email.' };
+            return state;
+          }
+          if (match.password !== password) {
+            result = { ok: false, error: 'Incorrect password.' };
+            return state;
+          }
+          return { account: match };
+        });
+        return result;
+      },
+      signOut: () => set({ account: null }),
+      updateAccount: ({ name, email }) => {
+        const trimmedEmail = email.trim().toLowerCase();
+        const trimmedName = name.trim();
+        let result: { ok: boolean; error?: string } = { ok: true };
+        set((state) => {
+          if (!state.account) {
+            result = { ok: false, error: 'Not signed in.' };
+            return state;
+          }
+          const conflict = state.accounts.some(
+            (a) =>
+              a.email.toLowerCase() === trimmedEmail &&
+              a.email.toLowerCase() !== state.account!.email.toLowerCase(),
+          );
+          if (conflict) {
+            result = { ok: false, error: 'An account with this email already exists.' };
+            return state;
+          }
+          const updated: Account = { ...state.account, name: trimmedName, email: trimmedEmail };
+          return {
+            account: updated,
+            accounts: state.accounts.map((a) =>
+              a.email.toLowerCase() === state.account!.email.toLowerCase() ? updated : a,
+            ),
+          };
+        });
+        return result;
+      },
       profile: null,
       analysis: null,
       roadmap: null,
@@ -189,6 +253,7 @@ export const useStore = create<OfferLabState>()(
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         account: state.account,
+        accounts: state.accounts,
         profile: state.profile,
         analysis: state.analysis,
         roadmap: state.roadmap,

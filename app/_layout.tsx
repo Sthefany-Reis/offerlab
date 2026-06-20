@@ -20,10 +20,13 @@ import {
   type ErrorBoundaryProps,
   SplashScreen,
   Stack,
+  useRouter,
+  useSegments,
 } from 'expo-router';
 
 import { initPostHog } from '@/lib/posthog';
 import { reportErrorToParent } from '@/lib/reportPreviewError';
+import { useStore } from '@/lib/store';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const queryClient = new QueryClient();
@@ -43,6 +46,42 @@ function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 }
 
 export { ErrorBoundary };
+
+function AuthGate() {
+  const router = useRouter();
+  const segments = useSegments();
+  const hasHydrated = useStore((s) => s.hasHydrated);
+  const isAuthed = useStore((s) => Boolean(s.account));
+
+  useEffect(() => {
+    if (!hasHydrated) return;
+    const first = segments[0];
+    const inAuthScreen = first === 'sign-in' || first === 'account';
+    if (!isAuthed && !inAuthScreen) {
+      router.replace('/sign-in');
+    } else if (isAuthed && first === 'sign-in') {
+      router.replace('/(tabs)');
+    }
+  }, [hasHydrated, isAuthed, segments, router]);
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="sign-in" />
+      <Stack.Screen name="account" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="cv" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="cv-rebuild" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="cv-history" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="matches/index" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="application/new" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="application/[id]" />
+      <Stack.Screen name="jobs/index" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="interview/new" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="interview/[id]" />
+      <Stack.Screen name="specialist/[id]" />
+    </Stack>
+  );
+}
 
 // Starter is light-only by default. Remove this when implementing requested dark mode.
 Uniwind.setTheme('light');
@@ -139,20 +178,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
         <HeroUINativeProvider>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="account" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="cv" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="cv-rebuild" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="cv-history" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="matches/index" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="application/new" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="application/[id]" />
-            <Stack.Screen name="jobs/index" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="interview/new" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="interview/[id]" />
-            <Stack.Screen name="specialist/[id]" />
-          </Stack>
+          <AuthGate />
         </HeroUINativeProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>

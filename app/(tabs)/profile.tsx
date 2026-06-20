@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   FileClock,
   FileText,
+  LogOut,
   Minus,
   RefreshCw,
   Trash2,
@@ -30,6 +31,12 @@ export default function ProfileTab() {
   const profile = useStore((s) => s.profile);
   const analysis = useStore((s) => s.analysis);
   const resetAll = useStore((s) => s.resetAll);
+  const signOut = useStore((s) => s.signOut);
+
+  const handleSignOut = () => {
+    signOut();
+    router.replace('/sign-in');
+  };
 
   const confirmReset = () => {
     if (Platform.OS === 'web') {
@@ -56,6 +63,12 @@ export default function ProfileTab() {
           actionLabel="Add my CV"
           onAction={() => router.push('/cv')}
         />
+        <View className="px-6">
+          <Button variant="tertiary" onPress={handleSignOut}>
+            <LogOut color={muted} size={18} />
+            <Button.Label>Sign out</Button.Label>
+          </Button>
+        </View>
       </View>
     );
   }
@@ -185,6 +198,10 @@ export default function ProfileTab() {
         <Button variant="tertiary" onPress={confirmReset}>
           <Trash2 color={muted} size={18} />
           <Button.Label>Reset all data</Button.Label>
+        </Button>
+        <Button variant="tertiary" onPress={handleSignOut}>
+          <LogOut color={muted} size={18} />
+          <Button.Label>Sign out</Button.Label>
         </Button>
       </View>
     </ScrollView>
