@@ -3,11 +3,12 @@ import { View } from 'react-native';
 
 import { cn } from '@/lib/utils';
 
-type Tone = 'brand' | 'violet' | 'positive' | 'caution' | 'info' | 'danger' | 'muted';
+type Tone = 'brand' | 'violet' | 'coral' | 'positive' | 'caution' | 'info' | 'danger' | 'muted';
 
 const toneMap: Record<Tone, { bg: string; text: string }> = {
   brand: { bg: 'bg-brand-soft', text: 'text-brand' },
   violet: { bg: 'bg-violet-soft', text: 'text-violet' },
+  coral: { bg: 'bg-coral-soft', text: 'text-coral' },
   positive: { bg: 'bg-positive-soft', text: 'text-positive' },
   caution: { bg: 'bg-caution-soft', text: 'text-caution' },
   info: { bg: 'bg-info-soft', text: 'text-info' },

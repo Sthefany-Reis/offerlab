@@ -36,8 +36,8 @@
     --radius: 0.75rem;
     --field-radius: calc(var(--radius) * 1.2);
 
-    --background: oklch(0.985 0.004 250);
-    --foreground: oklch(0.24 0.06 264);
+    --background: oklch(0.986 0.006 195);
+    --foreground: oklch(0.26 0.04 215);
 
     --surface: var(--white);
     --surface-foreground: var(--foreground);
@@ -45,13 +45,13 @@
     --overlay: var(--white);
     --overlay-foreground: var(--foreground);
 
-    --muted: oklch(0.52 0.03 264);
+    --muted: oklch(0.54 0.03 215);
     --scrollbar: oklch(87.1% 0.006 286.286);
 
-    --default: oklch(0.95 0.012 264);
+    --default: oklch(0.95 0.018 195);
     --default-foreground: var(--eclipse);
 
-    --accent: oklch(0.52 0.21 280);
+    --accent: oklch(0.6 0.12 192);
     --accent-foreground: var(--snow);
 
     --field-background: var(--white);
@@ -59,20 +59,20 @@
     --field-placeholder: var(--muted);
     --field-border: transparent;
 
-    --success: oklch(0.72 0.16 158);
+    --success: oklch(0.7 0.13 175);
     --success-foreground: var(--snow);
 
-    --warning: oklch(0.7819 0.1585 72.33);
+    --warning: oklch(0.78 0.15 60);
     --warning-foreground: var(--eclipse);
 
-    --danger: oklch(0.6532 0.2328 25.74);
+    --danger: oklch(0.64 0.2 28);
     --danger-foreground: var(--snow);
 
     --segment: var(--white);
     --segment-foreground: var(--eclipse);
 
-    --border: oklch(0.91 0.008 264);
-    --separator: oklch(0.91 0.008 264);
+    --border: oklch(0.92 0.012 200);
+    --separator: oklch(0.92 0.012 200);
     --focus: var(--accent);
     --link: var(--accent);
 
@@ -91,22 +91,24 @@
 
 @layer theme {
   @theme {
-    /* OfferLab brand palette derived from the logo */
-    --color-navy: oklch(0.24 0.06 264);
-    --color-brand: oklch(0.52 0.21 280);
-    --color-brand-soft: oklch(0.95 0.04 280);
-    --color-violet: oklch(0.52 0.22 292);
-    --color-violet-soft: oklch(0.95 0.04 292);
-    --color-blue: oklch(0.56 0.19 255);
-    --color-blue-soft: oklch(0.95 0.04 255);
-    --color-positive: oklch(0.72 0.16 158);
-    --color-positive-soft: oklch(0.95 0.06 158);
-    --color-emerald: oklch(0.72 0.16 158);
-    --color-emerald-soft: oklch(0.95 0.06 158);
-    --color-caution: oklch(0.7819 0.1585 72.33);
-    --color-caution-soft: oklch(0.96 0.06 80);
-    --color-info: oklch(0.56 0.19 255);
-    --color-info-soft: oklch(0.95 0.04 255);
+    /* OfferLab brand palette — teal & coral */
+    --color-navy: oklch(0.26 0.04 215);
+    --color-brand: oklch(0.6 0.12 192);
+    --color-brand-soft: oklch(0.95 0.035 192);
+    --color-violet: oklch(0.55 0.13 200);
+    --color-violet-soft: oklch(0.95 0.035 200);
+    --color-blue: oklch(0.58 0.1 210);
+    --color-blue-soft: oklch(0.95 0.03 210);
+    --color-positive: oklch(0.7 0.13 175);
+    --color-positive-soft: oklch(0.95 0.05 175);
+    --color-emerald: oklch(0.7 0.13 175);
+    --color-emerald-soft: oklch(0.95 0.05 175);
+    --color-coral: oklch(0.68 0.17 28);
+    --color-coral-soft: oklch(0.95 0.05 28);
+    --color-caution: oklch(0.78 0.15 60);
+    --color-caution-soft: oklch(0.96 0.06 60);
+    --color-info: oklch(0.6 0.12 192);
+    --color-info-soft: oklch(0.95 0.035 192);
   }
 }
 

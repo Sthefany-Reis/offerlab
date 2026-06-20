@@ -55,7 +55,7 @@ export default function Dashboard() {
             />
             <Text className="text-sm font-bold">
               <Text className="text-navy text-sm font-bold">Offer</Text>
-              <Text className="text-emerald text-sm font-bold">Lab</Text>
+              <Text className="text-coral text-sm font-bold">Lab</Text>
             </Text>
           </View>
           <Text className="text-foreground mt-1 text-2xl font-bold">
@@ -109,7 +109,7 @@ export default function Dashboard() {
             <View className="bg-default mt-3 h-2 w-full flex-row overflow-hidden rounded-full">
               <View className="bg-brand/40 flex-1" />
               <View className="bg-brand flex-1" />
-              <View className="bg-violet flex-1" />
+              <View className="bg-coral flex-1" />
             </View>
             <Pressable
               onPress={() => router.push('/profile')}
