@@ -40,6 +40,11 @@ const WORK_TYPES: { value: WorkType; label: string }[] = [
   { value: 'onsite', label: 'Onsite' },
 ];
 
+function openApply(job: JobListing) {
+  const url = job.url || linkedinJobUrl(job.title, job.company);
+  void Linking.openURL(url);
+}
+
 export default function JobSearchScreen() {
   const [muted, accent, foreground] = useThemeColor(['muted', 'accent', 'foreground']);
   const params = useLocalSearchParams();
@@ -243,6 +248,17 @@ export default function JobSearchScreen() {
                     Tap to tailor application
                   </Text>
                 </Pressable>
+
+                <View className="mt-3 flex-row gap-2">
+                  <Button className="flex-1" onPress={() => openApply(item)}>
+                    <ExternalLink color="#fff" size={16} />
+                    <Button.Label>Apply</Button.Label>
+                  </Button>
+                  <Button className="flex-1" variant="secondary" onPress={() => openTailor(item)}>
+                    <Sparkles color={accent} size={16} />
+                    <Button.Label>Tailor CV</Button.Label>
+                  </Button>
+                </View>
 
                 <View className="border-border mt-3 flex-row items-center gap-3 border-t pt-3">
                   <Text className="text-muted text-xs">Compare this role on:</Text>
