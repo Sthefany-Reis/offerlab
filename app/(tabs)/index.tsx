@@ -65,7 +65,7 @@ export default function Dashboard() {
             {profile?.fullName ? `Hi, ${profile.fullName.split(' ')[0]}` : 'Welcome'}
           </Text>
           <Text className="text-muted text-[11px] font-semibold tracking-[1.5px] uppercase">
-            Experiment. Optimize. Land your next offer.
+            Where applications become offers.
           </Text>
         </View>
         {analysis ? <ScoreRing score={analysis.overallScore} label="CV score" size={72} /> : null}
