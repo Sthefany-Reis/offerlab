@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { EmptyState } from '@/components/EmptyState';
 import { chatWithSpecialist, OpenAIError } from '@/lib/openai';
@@ -29,9 +29,11 @@ export default function SpecialistChat() {
 
   const analysis = useStore((s) => s.analysis);
   const profile = useStore((s) => s.profile);
-  const messages = useStore((s) => (id ? (s.chats[id] ?? []) : []));
+  const chats = useStore((s) => s.chats);
   const addChatMessage = useStore((s) => s.addChatMessage);
   const clearChat = useStore((s) => s.clearChat);
+
+  const messages = useMemo(() => (id ? (chats[id] ?? []) : []), [chats, id]);
 
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);

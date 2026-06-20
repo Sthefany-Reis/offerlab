@@ -1,8 +1,17 @@
-import { Check, ChevronLeft, Lightbulb, Sparkles, Trash2 } from 'lucide-react-native';
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Lightbulb,
+  SkipForward,
+  Sparkles,
+  Trash2,
+} from 'lucide-react-native';
 import { Button, Spinner, Text, TextArea, TextField, useThemeColor } from 'heroui-native';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ProgressBar } from '@/components/ProgressBar';
@@ -11,7 +20,7 @@ import { Tag } from '@/components/Tag';
 import { scoreColor } from '@/lib/format';
 import { evaluateAnswer, OpenAIError } from '@/lib/openai';
 import { useStore } from '@/lib/store';
-import type { InterviewQuestion } from '@/lib/types';
+import type { InterviewAnswerFeedback } from '@/lib/types';
 
 const CATEGORY_TONE = {
   behavioral: 'violet',
@@ -22,12 +31,27 @@ const CATEGORY_TONE = {
 
 export default function InterviewDetail() {
   const insets = useSafeAreaInsets();
-  const [foreground, muted] = useThemeColor(['foreground', 'muted']);
+  const [foreground, muted, accent] = useThemeColor(['foreground', 'muted', 'accent']);
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = useStore((s) => s.sessions.find((x) => x.id === id));
   const remove = useStore((s) => s.removeSession);
+  const addFeedback = useStore((s) => s.addSessionFeedback);
 
-  if (!session) {
+  const [index, setIndex] = useState(0);
+  const [answer, setAnswer] = useState('');
+  const [revealed, setRevealed] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const total = session?.questions.length ?? 0;
+  const question = session?.questions[index];
+
+  const feedback = useMemo(
+    () => session?.feedback.find((f) => f.questionId === question?.id),
+    [session?.feedback, question?.id],
+  );
+
+  if (!session || !question) {
     return (
       <View
         className="bg-background flex-1 items-center justify-center"
@@ -41,12 +65,35 @@ export default function InterviewDetail() {
     );
   }
 
-  const answered = session.feedback.length;
-  const progress = session.questions.length ? (answered / session.questions.length) * 100 : 0;
+  const answeredCount = session.feedback.length;
+  const progress = total ? ((index + 1) / total) * 100 : 0;
+  const isLast = index >= total - 1;
+
+  const goTo = (next: number) => {
+    if (next < 0 || next >= total) return;
+    setIndex(next);
+    setAnswer('');
+    setRevealed(false);
+    setError(null);
+    setLoading(false);
+  };
 
   const handleDelete = () => {
     remove(session.id);
     router.back();
+  };
+
+  const evaluate = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const result = await evaluateAnswer({ question, answer: answer.trim(), role: session.role });
+      addFeedback(session.id, result);
+    } catch (e) {
+      setError(e instanceof OpenAIError ? e.message : 'Could not evaluate your answer.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -67,87 +114,23 @@ export default function InterviewDetail() {
         </Pressable>
       </View>
 
+      <View className="border-border border-b px-4 py-3">
+        <View className="mb-2 flex-row items-center justify-between">
+          <Text className="text-muted text-xs font-semibold">
+            Question {index + 1} of {total}
+          </Text>
+          <Text className="text-muted text-xs">{answeredCount} answered</Text>
+        </View>
+        <ProgressBar value={progress} />
+      </View>
+
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingBottom: 48 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <SectionCard
-          className="mb-4"
-          title="Progress"
-          subtitle={`${answered}/${session.questions.length} answered`}
-        >
-          <ProgressBar value={progress} />
-        </SectionCard>
-
-        {session.questions.map((q, i) => (
-          <QuestionCard
-            key={q.id}
-            index={i}
-            sessionId={session.id}
-            role={session.role}
-            question={q}
-          />
-        ))}
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
-}
-
-function QuestionCard({
-  index,
-  sessionId,
-  role,
-  question,
-}: {
-  index: number;
-  sessionId: string;
-  role: string;
-  question: InterviewQuestion;
-}) {
-  const [accent] = useThemeColor(['accent']);
-  const feedback = useStore((s) =>
-    s.sessions.find((x) => x.id === sessionId)?.feedback.find((f) => f.questionId === question.id),
-  );
-  const addFeedback = useStore((s) => s.addSessionFeedback);
-
-  const [answer, setAnswer] = useState(feedback?.userAnswer ?? '');
-  const [open, setOpen] = useState(!feedback);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const evaluate = async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      const result = await evaluateAnswer({ question, answer: answer.trim(), role });
-      addFeedback(sessionId, result);
-    } catch (e) {
-      setError(e instanceof OpenAIError ? e.message : 'Could not evaluate your answer.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <SectionCard className="mb-3">
-      <Pressable onPress={() => setOpen((v) => !v)} className="flex-row items-start gap-2">
-        <View
-          className={`mt-0.5 h-6 w-6 items-center justify-center rounded-full ${
-            feedback ? 'bg-positive' : 'bg-brand-soft'
-          }`}
-        >
-          {feedback ? (
-            <Check color="#fff" size={14} />
-          ) : (
-            <Text className="text-brand text-xs font-bold">{index + 1}</Text>
-          )}
-        </View>
-        <View className="flex-1">
-          <Text className="text-foreground text-sm leading-5 font-semibold">
-            {question.question}
-          </Text>
-          <View className="mt-2 flex-row items-center gap-2">
+        <SectionCard>
+          <View className="flex-row items-center gap-2">
             <Tag label={question.category} tone={CATEGORY_TONE[question.category]} />
             <Tag label={question.difficulty} tone="muted" />
             {feedback ? (
@@ -156,23 +139,24 @@ function QuestionCard({
               </Text>
             ) : null}
           </View>
-        </View>
-      </Pressable>
 
-      {open ? (
-        <View className="mt-3">
-          <View className="bg-default/60 mb-3 rounded-xl p-3">
+          <Text className="text-foreground mt-3 text-lg leading-7 font-semibold">
+            {question.question}
+          </Text>
+
+          <View className="bg-default/60 mt-3 rounded-xl p-3">
             <Text className="text-muted text-xs font-semibold">What they look for</Text>
             <Text className="text-foreground mt-1 text-xs leading-5">
               {question.whatTheyLookFor}
             </Text>
           </View>
 
-          <TextField>
+          <TextField className="mt-4">
             <TextArea
               placeholder="Type your answer…"
-              value={answer}
+              value={feedback ? feedback.userAnswer : answer}
               onChangeText={setAnswer}
+              editable={!feedback}
               multiline
               style={{ minHeight: 120, textAlignVertical: 'top' }}
             />
@@ -180,57 +164,108 @@ function QuestionCard({
 
           {error ? <Text className="text-danger mt-2 text-xs">{error}</Text> : null}
 
-          <Button
-            className="mt-3"
-            variant={feedback ? 'secondary' : 'primary'}
-            onPress={evaluate}
-            isDisabled={answer.trim().length < 15 || loading}
-          >
-            {loading ? (
-              <Spinner size="sm" />
-            ) : (
-              <Sparkles color={feedback ? accent : '#fff'} size={16} />
-            )}
-            <Button.Label>
-              {loading ? 'Scoring…' : feedback ? 'Re-evaluate' : 'Get feedback'}
-            </Button.Label>
-          </Button>
+          {!feedback ? (
+            <View className="mt-3 gap-2">
+              <Button onPress={evaluate} isDisabled={answer.trim().length < 15 || loading}>
+                {loading ? <Spinner size="sm" /> : <Sparkles color="#fff" size={16} />}
+                <Button.Label>{loading ? 'Scoring…' : 'Submit answer'}</Button.Label>
+              </Button>
 
-          {feedback ? (
-            <View className="mt-4 gap-3">
-              {feedback.strengths.length ? (
-                <View>
-                  <Text className="text-positive text-xs font-semibold">Strengths</Text>
-                  {feedback.strengths.map((s) => (
-                    <Text key={s} className="text-foreground mt-1 text-xs leading-5">
-                      • {s}
-                    </Text>
-                  ))}
-                </View>
-              ) : null}
-              {feedback.improvements.length ? (
-                <View>
-                  <Text className="text-caution text-xs font-semibold">Improve</Text>
-                  {feedback.improvements.map((s) => (
-                    <Text key={s} className="text-foreground mt-1 text-xs leading-5">
-                      • {s}
-                    </Text>
-                  ))}
-                </View>
-              ) : null}
-              <View className="bg-violet-soft rounded-xl p-3">
-                <View className="flex-row items-center gap-1.5">
-                  <Lightbulb color={accent} size={14} />
-                  <Text className="text-violet text-xs font-semibold">Model answer</Text>
-                </View>
-                <Text className="text-foreground mt-1.5 text-xs leading-5">
-                  {feedback.suggestedAnswer}
-                </Text>
+              <View className="flex-row gap-2">
+                <Button
+                  variant="tertiary"
+                  className="flex-1"
+                  onPress={() => setRevealed((v) => !v)}
+                >
+                  <Eye color={accent} size={16} />
+                  <Button.Label>{revealed ? 'Hide answer' : 'Show answer'}</Button.Label>
+                </Button>
+                <Button
+                  variant="tertiary"
+                  className="flex-1"
+                  onPress={() => (isLast ? router.back() : goTo(index + 1))}
+                >
+                  <SkipForward color={accent} size={16} />
+                  <Button.Label>{isLast ? 'Finish' : 'Skip'}</Button.Label>
+                </Button>
               </View>
             </View>
           ) : null}
+
+          {revealed && !feedback ? (
+            <View className="bg-violet-soft mt-4 rounded-xl p-3">
+              <View className="flex-row items-center gap-1.5">
+                <Lightbulb color={accent} size={14} />
+                <Text className="text-violet text-xs font-semibold">Model answer</Text>
+              </View>
+              <Text className="text-foreground mt-1.5 text-xs leading-5">
+                {question.modelAnswerOutline}
+              </Text>
+            </View>
+          ) : null}
+
+          {feedback ? <FeedbackBlock feedback={feedback} /> : null}
+        </SectionCard>
+
+        <View className="mt-4 flex-row gap-2">
+          <Button
+            variant="secondary"
+            className="flex-1"
+            onPress={() => goTo(index - 1)}
+            isDisabled={index === 0}
+          >
+            <ChevronLeft color={index === 0 ? muted : accent} size={16} />
+            <Button.Label>Previous</Button.Label>
+          </Button>
+          <Button
+            variant="secondary"
+            className="flex-1"
+            onPress={() => (isLast ? router.back() : goTo(index + 1))}
+          >
+            <Button.Label>{isLast ? 'Done' : 'Next'}</Button.Label>
+            <ChevronRight color={accent} size={16} />
+          </Button>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+function FeedbackBlock({ feedback }: { feedback: InterviewAnswerFeedback }) {
+  const [accent] = useThemeColor(['accent']);
+  return (
+    <View className="mt-4 gap-3">
+      <View className="bg-positive/10 flex-row items-center gap-2 rounded-xl px-3 py-2.5">
+        <Check color="#16a34a" size={16} />
+        <Text className="text-positive text-sm font-semibold">Answer submitted</Text>
+      </View>
+      {feedback.strengths.length ? (
+        <View>
+          <Text className="text-positive text-xs font-semibold">Strengths</Text>
+          {feedback.strengths.map((s) => (
+            <Text key={s} className="text-foreground mt-1 text-xs leading-5">
+              • {s}
+            </Text>
+          ))}
         </View>
       ) : null}
-    </SectionCard>
+      {feedback.improvements.length ? (
+        <View>
+          <Text className="text-caution text-xs font-semibold">Improve</Text>
+          {feedback.improvements.map((s) => (
+            <Text key={s} className="text-foreground mt-1 text-xs leading-5">
+              • {s}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+      <View className="bg-violet-soft rounded-xl p-3">
+        <View className="flex-row items-center gap-1.5">
+          <Lightbulb color={accent} size={14} />
+          <Text className="text-violet text-xs font-semibold">Model answer</Text>
+        </View>
+        <Text className="text-foreground mt-1.5 text-xs leading-5">{feedback.suggestedAnswer}</Text>
+      </View>
+    </View>
   );
 }

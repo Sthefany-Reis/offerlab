@@ -1,4 +1,12 @@
-import { BookOpen, Check, GraduationCap, RefreshCw, Sparkles } from 'lucide-react-native';
+import {
+  BookOpen,
+  Check,
+  GraduationCap,
+  RefreshCw,
+  Sparkles,
+  Target,
+  TrendingUp,
+} from 'lucide-react-native';
 import { Button, Spinner, Text, useThemeColor } from 'heroui-native';
 import { Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
@@ -9,8 +17,16 @@ import { EmptyState } from '@/components/EmptyState';
 import { ProgressBar } from '@/components/ProgressBar';
 import { SectionCard } from '@/components/SectionCard';
 import { Tag } from '@/components/Tag';
+import { formatSalary } from '@/lib/format';
 import { buildRoadmap, OpenAIError } from '@/lib/openai';
 import { useStore } from '@/lib/store';
+
+const IMPORTANCE_TONE = {
+  critical: 'danger',
+  high: 'caution',
+  medium: 'info',
+  low: 'muted',
+} as const;
 
 const RESOURCE_TONE = {
   course: 'brand',
@@ -70,6 +86,53 @@ export default function RoadmapTab() {
       contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
       showsVerticalScrollIndicator={false}
     >
+      <SectionCard className="mb-4">
+        <View className="flex-row items-start gap-3">
+          <View className="bg-brand-soft mt-0.5 h-9 w-9 items-center justify-center rounded-full">
+            <Target color={accent} size={18} />
+          </View>
+          <View className="flex-1">
+            <Text className="text-foreground text-base font-bold">{analysis.detectedRole}</Text>
+            <Text className="text-muted text-xs">
+              {analysis.seniority} · ~{analysis.yearsExperience} yrs · CV score{' '}
+              {analysis.overallScore}/100
+            </Text>
+          </View>
+        </View>
+
+        <Text className="text-foreground mt-3 text-sm leading-6">{analysis.oneLineSummary}</Text>
+
+        <View className="bg-violet-soft mt-3 flex-row items-center gap-2 rounded-xl px-3 py-2.5">
+          <TrendingUp color={accent} size={16} />
+          <Text className="text-violet flex-1 text-xs font-medium">
+            Estimated market value:{' '}
+            {formatSalary(analysis.marketValue.lowAnnual, analysis.marketValue.currency)} –{' '}
+            {formatSalary(analysis.marketValue.highAnnual, analysis.marketValue.currency)}
+          </Text>
+        </View>
+
+        {analysis.skillGaps.length ? (
+          <View className="mt-4">
+            <Text className="text-foreground mb-2 text-sm font-semibold">
+              Skill gaps this plan closes
+            </Text>
+            <View className="gap-2">
+              {analysis.skillGaps.map((gap) => (
+                <View key={gap.skill} className="border-border rounded-xl border p-3">
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-foreground flex-1 pr-2 text-sm font-semibold">
+                      {gap.skill}
+                    </Text>
+                    <Tag label={gap.importance} tone={IMPORTANCE_TONE[gap.importance]} />
+                  </View>
+                  <Text className="text-muted mt-1 text-xs leading-5">{gap.reason}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
+      </SectionCard>
+
       {!roadmap ? (
         <SectionCard>
           <EmptyState

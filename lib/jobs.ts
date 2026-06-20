@@ -88,15 +88,41 @@ interface SearchParams {
   signal?: AbortSignal;
 }
 
-function matches(job: JobListing, query: string, location: string): boolean {
-  if (query) {
-    const haystack = `${job.title} ${job.company} ${job.tags.join(' ')}`.toLowerCase();
-    if (!haystack.includes(query)) return false;
-  }
-  if (location) {
-    if (!job.location.toLowerCase().includes(location)) return false;
-  }
-  return true;
+// Common filler words we don't want to require a match on.
+const STOP_WORDS = new Set([
+  'a',
+  'an',
+  'the',
+  'and',
+  'or',
+  'of',
+  'for',
+  'to',
+  'in',
+  'with',
+  'engineer',
+  'developer',
+  'manager',
+  'senior',
+  'junior',
+  'lead',
+]);
+
+/** Does the job match a free-text query? Any meaningful token hit (title, company, tags, description) counts. */
+function matchesQuery(job: JobListing, query: string): boolean {
+  if (!query) return true;
+  const haystack =
+    `${job.title} ${job.company} ${job.tags.join(' ')} ${job.jobTypes.join(' ')} ${job.description}`.toLowerCase();
+  if (haystack.includes(query)) return true;
+
+  const tokens = query.split(/[^a-z0-9+#.]+/i).filter((t) => t.length > 1 && !STOP_WORDS.has(t));
+  if (tokens.length === 0) return true; // query was only filler words
+  return tokens.some((t) => haystack.includes(t));
+}
+
+function matchesLocation(job: JobListing, location: string): boolean {
+  if (!location) return true;
+  return job.location.toLowerCase().includes(location);
 }
 
 export async function searchJobs(params: SearchParams = {}): Promise<JobListing[]> {
@@ -131,10 +157,20 @@ export async function searchJobs(params: SearchParams = {}): Promise<JobListing[
   const q = query.trim().toLowerCase();
   const loc = location.trim().toLowerCase();
 
-  return all
-    .filter((job) => (workType === 'any' ? true : job.workType === workType))
-    .filter((job) => matches(job, q, loc))
+  const byWorkType = all.filter((job) => (workType === 'any' ? true : job.workType === workType));
+  const matched = byWorkType
+    .filter((job) => matchesQuery(job, q) && matchesLocation(job, loc))
     .sort((a, b) => b.createdAt - a.createdAt);
+
+  // If a specific role search returns nothing in the live feed, fall back to the
+  // most recent listings (respecting work type) so the screen is never empty.
+  if (matched.length === 0 && q) {
+    return byWorkType
+      .filter((job) => matchesLocation(job, loc))
+      .sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  return matched;
 }
 
 /** Build a LinkedIn jobs search URL for a given role + company. */
