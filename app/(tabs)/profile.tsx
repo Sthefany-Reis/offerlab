@@ -7,6 +7,7 @@ import {
   Trash2,
   TrendingDown,
   TrendingUp,
+  UserRound,
 } from 'lucide-react-native';
 import { Button, Text, useThemeColor } from 'heroui-native';
 import { Alert, Platform, ScrollView, View } from 'react-native';
@@ -24,6 +25,7 @@ import { useStore } from '@/lib/store';
 export default function ProfileTab() {
   const insets = useSafeAreaInsets();
   const [accent, muted] = useThemeColor(['accent', 'muted']);
+  const account = useStore((s) => s.account);
   const profile = useStore((s) => s.profile);
   const analysis = useStore((s) => s.analysis);
   const resetAll = useStore((s) => s.resetAll);
@@ -70,9 +72,9 @@ export default function ProfileTab() {
           <ScoreRing score={analysis.overallScore} label="CV score" size={76} />
           <View className="flex-1">
             <Text className="text-foreground text-lg font-bold">
-              {profile.fullName || analysis.detectedRole}
+              {account?.name || profile.fullName || analysis.detectedRole}
             </Text>
-            <Text className="text-muted text-sm">{analysis.detectedRole}</Text>
+            <Text className="text-muted text-sm">{account?.email || analysis.detectedRole}</Text>
             <View className="mt-2 flex-row flex-wrap gap-2">
               <Tag label={analysis.seniority} tone="violet" />
               <Tag label={`${analysis.yearsExperience} yrs`} tone="brand" />
@@ -167,6 +169,10 @@ export default function ProfileTab() {
       </SectionCard>
 
       <View className="gap-3">
+        <Button variant="secondary" onPress={() => router.push('/account')}>
+          <UserRound color={accent} size={18} />
+          <Button.Label>Edit your profile</Button.Label>
+        </Button>
         <Button variant="secondary" onPress={() => router.push('/cv')}>
           <RefreshCw color={accent} size={18} />
           <Button.Label>Update CV & re-analyze</Button.Label>

@@ -7,6 +7,7 @@ import {
   Sparkles,
   Target,
   TrendingUp,
+  UserRound,
   Users,
   Wand2,
 } from 'lucide-react-native';
@@ -17,9 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/EmptyState';
 import { ProgressBar } from '@/components/ProgressBar';
-import { ScoreRing } from '@/components/ScoreRing';
 import { SectionCard } from '@/components/SectionCard';
-import { Tag } from '@/components/Tag';
 import { formatSalary } from '@/lib/format';
 import { useStore } from '@/lib/store';
 
@@ -28,6 +27,7 @@ const logo = require('@/assets/offerlab-logo.png');
 export default function Dashboard() {
   const insets = useSafeAreaInsets();
   const [accent] = useThemeColor(['accent']);
+  const account = useStore((s) => s.account);
   const profile = useStore((s) => s.profile);
   const analysis = useStore((s) => s.analysis);
   const roadmap = useStore((s) => s.roadmap);
@@ -36,6 +36,16 @@ export default function Dashboard() {
   const roadmapDone = roadmap ? roadmap.steps.filter((s) => s.done).length : 0;
   const roadmapProgress =
     roadmap && roadmap.steps.length ? (roadmapDone / roadmap.steps.length) * 100 : 0;
+
+  const greetingName = account?.name || profile?.fullName;
+  const initials = greetingName
+    ? greetingName
+        .split(' ')
+        .map((p) => p[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase()
+    : null;
 
   return (
     <ScrollView
@@ -62,13 +72,24 @@ export default function Dashboard() {
             </Text>
           </View>
           <Text className="text-foreground mt-1 text-2xl font-bold">
-            {profile?.fullName ? `Hi, ${profile.fullName.split(' ')[0]}` : 'Welcome'}
+            {greetingName ? `Hi, ${greetingName.split(' ')[0]}` : 'Welcome'}
           </Text>
           <Text className="text-muted text-[11px] font-semibold tracking-[1.5px] uppercase">
             Where applications become offers.
           </Text>
         </View>
-        {analysis ? <ScoreRing score={analysis.overallScore} label="CV score" size={72} /> : null}
+        <Pressable
+          onPress={() => router.push('/account')}
+          hitSlop={8}
+          accessibilityLabel={account ? 'Edit your profile' : 'Set up your profile'}
+          className="bg-brand h-11 w-11 items-center justify-center rounded-full active:opacity-80"
+        >
+          {initials ? (
+            <Text className="text-sm font-bold text-white">{initials}</Text>
+          ) : (
+            <UserRound color="#fff" size={20} />
+          )}
+        </Pressable>
       </View>
 
       {!profile ? (
@@ -93,35 +114,67 @@ export default function Dashboard() {
         </SectionCard>
       ) : (
         <>
-          <SectionCard
-            title="Estimated market value"
-            subtitle={`${analysis.marketValue.matchedRole} · ${analysis.marketValue.region}`}
-            className="mb-4"
-            right={<Tag label={analysis.seniority} tone="violet" />}
+          <View
+            className="mb-4 overflow-hidden rounded-3xl p-5"
+            style={{
+              backgroundColor: '#15131f',
+              shadowColor: '#15131f',
+              shadowOpacity: 0.25,
+              shadowRadius: 18,
+              shadowOffset: { width: 0, height: 10 },
+              elevation: 4,
+            }}
           >
-            <View className="flex-row items-end gap-1">
-              <Text className="text-brand text-3xl font-bold">
-                {formatSalary(analysis.marketValue.midAnnual, analysis.marketValue.currency)}
-              </Text>
-              <Text className="text-muted mb-1 text-xs">/ yr</Text>
+            <View className="flex-row items-start justify-between">
+              <View className="flex-1 pr-3">
+                <Text className="text-xs font-semibold tracking-wide text-white/60 uppercase">
+                  CV market value
+                </Text>
+                <View className="mt-2 flex-row items-end gap-1">
+                  <Text className="text-3xl font-bold text-white">
+                    {formatSalary(analysis.marketValue.midAnnual, analysis.marketValue.currency)}
+                  </Text>
+                  <Text className="mb-1 text-xs text-white/60">/ yr</Text>
+                </View>
+                <Text className="mt-1 text-xs text-white/60">
+                  {formatSalary(analysis.marketValue.lowAnnual, analysis.marketValue.currency)} –{' '}
+                  {formatSalary(analysis.marketValue.highAnnual, analysis.marketValue.currency)}
+                </Text>
+              </View>
+              <View className="items-center">
+                <View
+                  className="h-[68px] w-[68px] items-center justify-center rounded-full border-4"
+                  style={{ borderColor: '#7c5cff' }}
+                >
+                  <Text className="text-xl font-bold text-white">{analysis.overallScore}</Text>
+                </View>
+                <Text className="mt-1.5 text-[10px] text-white/60">CV score</Text>
+              </View>
             </View>
-            <Text className="text-muted mt-1 text-xs">
-              Range {formatSalary(analysis.marketValue.lowAnnual, analysis.marketValue.currency)} –{' '}
-              {formatSalary(analysis.marketValue.highAnnual, analysis.marketValue.currency)}
-            </Text>
-            <View className="bg-default mt-3 h-2 w-full flex-row overflow-hidden rounded-full">
-              <View className="bg-brand/40 flex-1" />
-              <View className="bg-brand flex-1" />
-              <View className="bg-coral flex-1" />
+
+            <View className="mt-4 h-2 w-full flex-row overflow-hidden rounded-full bg-white/10">
+              <View className="flex-1" style={{ backgroundColor: '#5b4bd6' }} />
+              <View className="flex-1" style={{ backgroundColor: '#7c5cff' }} />
+              <View className="flex-1" style={{ backgroundColor: '#a78bfa' }} />
             </View>
-            <Pressable
-              onPress={() => router.push('/profile')}
-              className="mt-3 flex-row items-center gap-1"
-            >
-              <Text className="text-brand text-sm font-semibold">See full analysis</Text>
-              <ArrowRight color={accent} size={15} />
-            </Pressable>
-          </SectionCard>
+
+            <View className="mt-4 flex-row items-center justify-between">
+              <View className="self-start rounded-full bg-white/10 px-2.5 py-1">
+                <Text className="text-xs font-medium text-white">
+                  {analysis.marketValue.matchedRole} · {analysis.seniority}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => router.push('/profile')}
+                className="flex-row items-center gap-1 active:opacity-70"
+              >
+                <Text className="text-sm font-semibold" style={{ color: '#a78bfa' }}>
+                  Full analysis
+                </Text>
+                <ArrowRight color="#a78bfa" size={15} />
+              </Pressable>
+            </View>
+          </View>
 
           <View className="mb-4 flex-row gap-3">
             <View className="bg-surface border-border flex-1 rounded-2xl border p-4">

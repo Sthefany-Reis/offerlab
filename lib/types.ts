@@ -104,6 +104,13 @@ export interface InterviewSession {
   createdAt: number;
 }
 
+// Lightweight local account (visual-only; no real auth).
+export interface Account {
+  name: string;
+  email: string;
+  createdAt: number;
+}
+
 export interface CvProfile {
   fullName: string;
   targetRole: string;

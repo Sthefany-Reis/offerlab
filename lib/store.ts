@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import type {
+  Account,
   ApplicationStatus,
   ChatMessage,
   CvAnalysis,
@@ -19,6 +20,9 @@ import type {
 interface OfferLabState {
   hasHydrated: boolean;
   setHasHydrated: () => void;
+  account: Account | null;
+  setAccount: (account: { name: string; email: string }) => void;
+  clearAccount: () => void;
   profile: CvProfile | null;
   analysis: CvAnalysis | null;
   roadmap: Roadmap | null;
@@ -56,6 +60,16 @@ export const useStore = create<OfferLabState>()(
     (set) => ({
       hasHydrated: false,
       setHasHydrated: () => set({ hasHydrated: true }),
+      account: null,
+      setAccount: ({ name, email }) =>
+        set((state) => ({
+          account: {
+            name: name.trim(),
+            email: email.trim(),
+            createdAt: state.account?.createdAt ?? Date.now(),
+          },
+        })),
+      clearAccount: () => set({ account: null }),
       profile: null,
       analysis: null,
       roadmap: null,
@@ -125,6 +139,7 @@ export const useStore = create<OfferLabState>()(
 
       resetAll: () =>
         set({
+          account: null,
           profile: null,
           analysis: null,
           roadmap: null,
@@ -139,6 +154,7 @@ export const useStore = create<OfferLabState>()(
       name: 'offerlab-store-v1',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
+        account: state.account,
         profile: state.profile,
         analysis: state.analysis,
         roadmap: state.roadmap,

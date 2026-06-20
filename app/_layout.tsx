@@ -141,6 +141,7 @@ export default function RootLayout() {
         <HeroUINativeProvider>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="account" options={{ presentation: 'modal' }} />
             <Stack.Screen name="cv" options={{ presentation: 'modal' }} />
             <Stack.Screen name="cv-rebuild" options={{ presentation: 'modal' }} />
             <Stack.Screen name="matches/index" options={{ presentation: 'modal' }} />
