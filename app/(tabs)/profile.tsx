@@ -1,18 +1,20 @@
 import {
   AlertCircle,
   CheckCircle2,
+  Crown,
   FileClock,
   FileText,
   LogOut,
   Minus,
   RefreshCw,
+  Sparkles,
   Trash2,
   TrendingDown,
   TrendingUp,
   UserRound,
 } from 'lucide-react-native';
 import { Button, Text, useThemeColor } from 'heroui-native';
-import { Alert, Platform, ScrollView, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -32,6 +34,20 @@ export default function ProfileTab() {
   const analysis = useStore((s) => s.analysis);
   const resetAll = useStore((s) => s.resetAll);
   const signOut = useStore((s) => s.signOut);
+  const pro = useStore((s) => s.pro);
+  const cancelPro = useStore((s) => s.cancelPro);
+  const isPro = Boolean(pro?.active);
+
+  const confirmCancelPro = () => {
+    if (Platform.OS === 'web') {
+      cancelPro();
+      return;
+    }
+    Alert.alert('Cancel OfferLab Pro?', 'You will lose access to Pro features.', [
+      { text: 'Keep Pro', style: 'cancel' },
+      { text: 'Cancel Pro', style: 'destructive', onPress: () => cancelPro() },
+    ]);
+  };
 
   const handleSignOut = () => {
     signOut();
@@ -97,6 +113,46 @@ export default function ProfileTab() {
         </View>
         <Text className="text-muted mt-3 text-sm leading-5">{analysis.oneLineSummary}</Text>
       </SectionCard>
+
+      {isPro ? (
+        <SectionCard className="mb-4">
+          <View className="flex-row items-center gap-3">
+            <View
+              className="h-11 w-11 items-center justify-center rounded-xl"
+              style={{ backgroundColor: accent }}
+            >
+              <Crown color="#fff" size={20} />
+            </View>
+            <View className="flex-1">
+              <Text className="text-foreground text-base font-bold">OfferLab Pro</Text>
+              <Text className="text-muted text-xs capitalize">
+                {pro?.plan} plan · renews {new Date(pro?.renewsAt ?? 0).toLocaleDateString()}
+              </Text>
+            </View>
+          </View>
+          <Button className="mt-3" variant="tertiary" onPress={confirmCancelPro}>
+            <Button.Label>Cancel subscription</Button.Label>
+          </Button>
+        </SectionCard>
+      ) : (
+        <Pressable
+          onPress={() => router.push('/paywall')}
+          className="mb-4 flex-row items-center gap-3 rounded-2xl p-4 active:opacity-90"
+          style={{ backgroundColor: '#15131f' }}
+        >
+          <View
+            className="h-11 w-11 items-center justify-center rounded-xl"
+            style={{ backgroundColor: accent }}
+          >
+            <Sparkles color="#fff" size={20} />
+          </View>
+          <View className="flex-1">
+            <Text className="text-base font-bold text-white">Upgrade to Pro</Text>
+            <Text className="text-xs text-white/55">Rebuild CV, AI cover letters & more</Text>
+          </View>
+          <Crown color="#a78bfa" size={20} />
+        </Pressable>
+      )}
 
       <SectionCard
         title="Market value"

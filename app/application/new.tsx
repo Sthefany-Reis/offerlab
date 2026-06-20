@@ -1,4 +1,4 @@
-import { Sparkles, X } from 'lucide-react-native';
+import { Lock, Sparkles, X } from 'lucide-react-native';
 import { Button, Label, Spinner, Text, TextArea, TextField, useThemeColor } from 'heroui-native';
 import {
   KeyboardAvoidingView,
@@ -16,11 +16,12 @@ import { OpenAIError, tailorApplication } from '@/lib/openai';
 import { useStore } from '@/lib/store';
 
 export default function NewApplication() {
-  const [muted] = useThemeColor(['muted']);
+  const [muted, accent] = useThemeColor(['muted', 'accent']);
   const params = useLocalSearchParams();
   const analysis = useStore((s) => s.analysis);
   const profile = useStore((s) => s.profile);
   const addApplication = useStore((s) => s.addApplication);
+  const isPro = useStore((s) => Boolean(s.pro?.active));
 
   const [jobTitle, setJobTitle] = useState(
     Array.isArray(params.jobTitle) ? (params.jobTitle[0] ?? '') : (params.jobTitle ?? ''),
@@ -36,11 +37,16 @@ export default function NewApplication() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit =
+  const formReady =
     jobTitle.trim().length > 1 && jobDescription.trim().length >= 60 && !loading && !!analysis;
+  const canSubmit = isPro ? formReady : !loading;
 
   const submit = async () => {
     if (!analysis || !profile) return;
+    if (!isPro) {
+      router.push({ pathname: '/paywall', params: { feature: 'AI cover letters' } });
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
@@ -111,10 +117,33 @@ export default function NewApplication() {
           </View>
         ) : null}
 
+        {!isPro ? (
+          <View
+            className="mb-4 flex-row items-start gap-2 rounded-xl px-3 py-3"
+            style={{ backgroundColor: `${accent}14` }}
+          >
+            <Lock color={accent} size={16} />
+            <Text className="text-foreground flex-1 text-xs leading-5">
+              AI cover letters and tailored resume bullets are a Pro feature. Unlock to generate a
+              tailored application from this posting.
+            </Text>
+          </View>
+        ) : null}
+
         <Button onPress={submit} isDisabled={!canSubmit}>
-          {loading ? <Spinner size="sm" /> : <Sparkles color="#fff" size={18} />}
+          {loading ? (
+            <Spinner size="sm" />
+          ) : isPro ? (
+            <Sparkles color="#fff" size={18} />
+          ) : (
+            <Lock color="#fff" size={18} />
+          )}
           <Button.Label>
-            {loading ? 'Tailoring your application…' : 'Tailor my application'}
+            {loading
+              ? 'Tailoring your application…'
+              : isPro
+                ? 'Tailor my application'
+                : 'Unlock with Pro'}
           </Button.Label>
         </Button>
       </ScrollView>

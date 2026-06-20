@@ -18,10 +18,22 @@ import type {
   RoadmapStep,
 } from '@/lib/types';
 
+export type ProPlan = 'monthly' | 'yearly';
+
+export interface ProSubscription {
+  active: boolean;
+  plan: ProPlan;
+  startedAt: number;
+  renewsAt: number;
+}
+
 interface OfferLabState {
   hasHydrated: boolean;
   setHasHydrated: () => void;
   account: Account | null;
+  pro: ProSubscription | null;
+  subscribePro: (plan: ProPlan) => void;
+  cancelPro: () => void;
   accounts: Account[];
   signUp: (input: { name: string; email: string; password: string }) => {
     ok: boolean;
@@ -73,6 +85,14 @@ export const useStore = create<OfferLabState>()(
       setHasHydrated: () => set({ hasHydrated: true }),
       account: null,
       accounts: [],
+      pro: null,
+      subscribePro: (plan) =>
+        set(() => {
+          const now = Date.now();
+          const renewsAt = now + (plan === 'yearly' ? 365 : 30) * 24 * 60 * 60 * 1000;
+          return { pro: { active: true, plan, startedAt: now, renewsAt } };
+        }),
+      cancelPro: () => set({ pro: null }),
       signUp: ({ name, email, password }) => {
         const trimmedEmail = email.trim().toLowerCase();
         const trimmedName = name.trim();
@@ -254,6 +274,7 @@ export const useStore = create<OfferLabState>()(
       partialize: (state) => ({
         account: state.account,
         accounts: state.accounts,
+        pro: state.pro,
         profile: state.profile,
         analysis: state.analysis,
         roadmap: state.roadmap,

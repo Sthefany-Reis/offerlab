@@ -38,6 +38,7 @@ export default function Dashboard() {
   const analysis = useStore((s) => s.analysis);
   const roadmap = useStore((s) => s.roadmap);
   const applications = useStore((s) => s.applications);
+  const isPro = useStore((s) => Boolean(s.pro?.active));
 
   const roadmapDone = roadmap ? roadmap.steps.filter((s) => s.done).length : 0;
   const roadmapProgress =
@@ -206,6 +207,7 @@ export default function Dashboard() {
                 onPress={() => router.push('/cv-rebuild')}
                 accent={accent}
                 highlight={analysis.overallScore < 70}
+                proBadge={!isPro}
               />
               <FeatureTile
                 icon={Send}
@@ -213,6 +215,7 @@ export default function Dashboard() {
                 subtitle="Match CV to a job"
                 onPress={() => router.push('/applications')}
                 accent={accent}
+                proBadge={!isPro}
               />
               <FeatureTile
                 icon={MessagesSquare}
@@ -301,6 +304,7 @@ function FeatureTile({
   onPress,
   accent,
   highlight,
+  proBadge,
 }: {
   icon: typeof FileText;
   title: string;
@@ -308,6 +312,7 @@ function FeatureTile({
   onPress: () => void;
   accent: string;
   highlight?: boolean;
+  proBadge?: boolean;
 }) {
   return (
     <Pressable
@@ -330,7 +335,16 @@ function FeatureTile({
         >
           <Icon color={highlight ? '#fff' : accent} size={20} />
         </View>
-        <ArrowUpRight color={highlight ? '#fff' : accent} size={18} />
+        {proBadge ? (
+          <View
+            className="rounded-full px-2 py-0.5"
+            style={{ backgroundColor: highlight ? 'rgba(255,255,255,0.22)' : accent }}
+          >
+            <Text className="text-[10px] font-bold text-white">PRO</Text>
+          </View>
+        ) : (
+          <ArrowUpRight color={highlight ? '#fff' : accent} size={18} />
+        )}
       </View>
       <View className="mt-3">
         <Text

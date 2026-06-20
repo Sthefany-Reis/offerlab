@@ -1,4 +1,4 @@
-import { Check, Copy, RefreshCw, Share2, Sparkles, X } from 'lucide-react-native';
+import { Check, Copy, Lock, RefreshCw, Share2, Sparkles, X } from 'lucide-react-native';
 import { Button, Spinner, Text, useThemeColor } from 'heroui-native';
 import { Pressable, ScrollView, Share, View } from 'react-native';
 import { router } from 'expo-router';
@@ -27,13 +27,14 @@ export default function CvRebuildScreen() {
   const profile = useStore((s) => s.profile);
   const rebuiltCv = useStore((s) => s.rebuiltCv);
   const setRebuiltCv = useStore((s) => s.setRebuiltCv);
+  const isPro = useStore((s) => Boolean(s.pro?.active));
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const run = useCallback(async () => {
-    if (!analysis || !profile) return;
+    if (!analysis || !profile || !isPro) return;
     setLoading(true);
     setError(null);
     try {
@@ -49,11 +50,11 @@ export default function CvRebuildScreen() {
     } finally {
       setLoading(false);
     }
-  }, [analysis, profile, setRebuiltCv]);
+  }, [analysis, profile, isPro, setRebuiltCv]);
 
   useEffect(() => {
-    if (analysis && profile && !rebuiltCv) void run();
-  }, [analysis, profile, rebuiltCv, run]);
+    if (analysis && profile && isPro && !rebuiltCv) void run();
+  }, [analysis, profile, isPro, rebuiltCv, run]);
 
   const handleCopy = async () => {
     if (!rebuiltCv) return;
@@ -94,6 +95,33 @@ export default function CvRebuildScreen() {
             onAction={() => router.replace('/cv')}
           />
         </View>
+      ) : !isPro ? (
+        <ScrollView
+          contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <SectionCard className="mb-4 items-center">
+            <View
+              className="h-14 w-14 items-center justify-center rounded-2xl"
+              style={{ backgroundColor: accent }}
+            >
+              <Lock color="#fff" size={24} />
+            </View>
+            <Text className="text-foreground mt-3 text-lg font-bold">Rebuild my CV is Pro</Text>
+            <Text className="text-muted mt-1 text-center text-sm leading-5">
+              Get an AI-restructured, ATS-friendly version of your CV with a sharper summary,
+              quantified bullets, and copy & share — included with OfferLab Pro.
+            </Text>
+          </SectionCard>
+          <Button
+            onPress={() =>
+              router.push({ pathname: '/paywall', params: { feature: 'Rebuild my CV' } })
+            }
+          >
+            <Sparkles color="#fff" size={18} />
+            <Button.Label>Unlock with Pro</Button.Label>
+          </Button>
+        </ScrollView>
       ) : loading && !rebuiltCv ? (
         <View className="flex-1 items-center justify-center">
           <Spinner />

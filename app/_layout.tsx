@@ -72,6 +72,7 @@ function AuthGate() {
       <Stack.Screen name="cv" options={{ presentation: 'modal' }} />
       <Stack.Screen name="cv-rebuild" options={{ presentation: 'modal' }} />
       <Stack.Screen name="cv-history" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
       <Stack.Screen name="matches/index" options={{ presentation: 'modal' }} />
       <Stack.Screen name="application/new" options={{ presentation: 'modal' }} />
       <Stack.Screen name="application/[id]" />
