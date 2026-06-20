@@ -7,10 +7,9 @@ import type {
   Roadmap,
 } from '@/lib/types';
 
-const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY;
-const ENDPOINT = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-3-5-sonnet-latest';
-const ANTHROPIC_VERSION = '2023-06-01';
+const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+const MODEL = 'gemini-1.5-flash';
+const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
 // Retains the historical export name so callers across the app keep working.
 export class OpenAIError extends Error {}
@@ -35,16 +34,16 @@ function extractJson(text: string): string {
 
 async function chatJson<T>(messages: ChatMessage[]): Promise<T> {
   if (!API_KEY) {
-    throw new OpenAIError('Missing Anthropic API key. Add EXPO_PUBLIC_ANTHROPIC_API_KEY.');
+    throw new OpenAIError('Missing Gemini API key. Add EXPO_PUBLIC_GEMINI_API_KEY.');
   }
 
   const systemPrompt = messages
     .filter((m) => m.role === 'system')
     .map((m) => m.content)
     .join('\n\n');
-  const userMessages = messages
+  const userContents = messages
     .filter((m) => m.role === 'user')
-    .map((m) => ({ role: 'user' as const, content: m.content }));
+    .map((m) => ({ role: 'user' as const, parts: [{ text: m.content }] }));
 
   let response: Response;
   try {
@@ -52,28 +51,29 @@ async function chatJson<T>(messages: ChatMessage[]): Promise<T> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': API_KEY,
-        'anthropic-version': ANTHROPIC_VERSION,
-        'anthropic-dangerous-direct-browser-access': 'true',
+        'x-goog-api-key': API_KEY,
       },
       body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 4096,
-        temperature: 0.5,
-        system: systemPrompt,
-        messages: userMessages,
+        systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
+        contents: userContents,
+        generationConfig: {
+          temperature: 0.5,
+          maxOutputTokens: 4096,
+          responseMimeType: 'application/json',
+        },
       }),
     });
   } catch {
-    throw new OpenAIError('Network error reaching Anthropic. Check your connection and try again.');
+    throw new OpenAIError('Network error reaching Gemini. Check your connection and try again.');
   }
 
   if (!response.ok) {
     const text = await response.text().catch(() => '');
-    if (response.status === 401) throw new OpenAIError('Invalid Anthropic API key.');
+    if (response.status === 400 || response.status === 401 || response.status === 403)
+      throw new OpenAIError('Invalid Gemini API key.');
     if (response.status === 429)
-      throw new OpenAIError('Anthropic rate limit reached. Try again shortly.');
-    throw new OpenAIError(`Anthropic request failed (${response.status}). ${text.slice(0, 120)}`);
+      throw new OpenAIError('Gemini rate limit reached. Try again shortly.');
+    throw new OpenAIError(`Gemini request failed (${response.status}). ${text.slice(0, 120)}`);
   }
 
   const raw = (await response.json()) as unknown;
@@ -82,17 +82,25 @@ async function chatJson<T>(messages: ChatMessage[]): Promise<T> {
   if (
     typeof raw === 'object' &&
     raw !== null &&
-    'content' in raw &&
-    Array.isArray(raw.content) &&
-    raw.content.length > 0 &&
-    typeof raw.content[0] === 'object' &&
-    raw.content[0] !== null &&
-    'text' in raw.content[0] &&
-    typeof raw.content[0].text === 'string'
+    'candidates' in raw &&
+    Array.isArray(raw.candidates) &&
+    raw.candidates.length > 0 &&
+    typeof raw.candidates[0] === 'object' &&
+    raw.candidates[0] !== null &&
+    'content' in raw.candidates[0] &&
+    typeof raw.candidates[0].content === 'object' &&
+    raw.candidates[0].content !== null &&
+    'parts' in raw.candidates[0].content &&
+    Array.isArray(raw.candidates[0].content.parts) &&
+    raw.candidates[0].content.parts.length > 0 &&
+    typeof raw.candidates[0].content.parts[0] === 'object' &&
+    raw.candidates[0].content.parts[0] !== null &&
+    'text' in raw.candidates[0].content.parts[0] &&
+    typeof raw.candidates[0].content.parts[0].text === 'string'
   ) {
-    content = raw.content[0].text;
+    content = raw.candidates[0].content.parts[0].text;
   }
-  if (!content) throw new OpenAIError('Anthropic returned an empty response.');
+  if (!content) throw new OpenAIError('Gemini returned an empty response.');
 
   try {
     const parsed: unknown = JSON.parse(extractJson(content));
