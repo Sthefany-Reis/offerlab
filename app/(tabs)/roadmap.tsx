@@ -3,12 +3,13 @@ import {
   Check,
   GraduationCap,
   RefreshCw,
+  Search,
   Sparkles,
   Target,
   TrendingUp,
 } from 'lucide-react-native';
 import { Button, Spinner, Text, useThemeColor } from 'heroui-native';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,8 +19,9 @@ import { ProgressBar } from '@/components/ProgressBar';
 import { SectionCard } from '@/components/SectionCard';
 import { Tag } from '@/components/Tag';
 import { formatSalary } from '@/lib/format';
-import { buildRoadmap, OpenAIError } from '@/lib/openai';
+import { buildRoadmap, buildTopicRoadmap, OpenAIError } from '@/lib/openai';
 import { useStore } from '@/lib/store';
+import type { Roadmap } from '@/lib/types';
 
 const IMPORTANCE_TONE = {
   critical: 'danger',
@@ -38,7 +40,7 @@ const RESOURCE_TONE = {
 
 export default function RoadmapTab() {
   const insets = useSafeAreaInsets();
-  const [accent] = useThemeColor(['accent']);
+  const [accent, muted] = useThemeColor(['accent', 'muted']);
   const analysis = useStore((s) => s.analysis);
   const profile = useStore((s) => s.profile);
   const roadmap = useStore((s) => s.roadmap);
@@ -47,6 +49,8 @@ export default function RoadmapTab() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [searching, setSearching] = useState(false);
 
   const generate = async () => {
     if (!analysis) return;
@@ -63,22 +67,83 @@ export default function RoadmapTab() {
     }
   };
 
+  const searchRoadmap = async () => {
+    if (!query.trim()) return;
+    setError(null);
+    setSearching(true);
+    try {
+      const result = await buildTopicRoadmap({ query });
+      setRoadmap(result);
+    } catch (e) {
+      setError(e instanceof OpenAIError ? e.message : 'Could not build that roadmap.');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const searchCard = (
+    <SectionCard
+      title="Search a roadmap"
+      subtitle="Generate a learning plan for any skill, tool or role"
+      className="mb-4"
+    >
+      <View className="flex-row items-end gap-2">
+        <View className="bg-field-background border-border flex-1 flex-row items-center gap-2 rounded-xl border px-3 py-2.5">
+          <Search color={muted} size={18} />
+          <TextInput
+            placeholder="e.g. Data Science, Kubernetes, UX Design"
+            placeholderTextColor={muted}
+            value={query}
+            onChangeText={setQuery}
+            autoCapitalize="words"
+            onSubmitEditing={searchRoadmap}
+            returnKeyType="search"
+            className="text-foreground flex-1 text-base"
+          />
+        </View>
+        <Button onPress={searchRoadmap} isDisabled={searching || !query.trim()}>
+          {searching ? <Spinner size="sm" /> : <Sparkles color="#fff" size={18} />}
+          <Button.Label>Build</Button.Label>
+        </Button>
+      </View>
+    </SectionCard>
+  );
+
   if (!analysis) {
     return (
-      <View className="bg-background flex-1 justify-center" style={{ paddingTop: insets.top }}>
-        <EmptyState
-          icon={GraduationCap}
-          title="Analyze your CV first"
-          description="Your learning roadmap is built from your skill gaps. Add and analyze your CV to unlock it."
-          actionLabel="Add my CV"
-          onAction={() => router.push('/cv')}
-        />
-      </View>
+      <ScrollView
+        className="bg-background flex-1"
+        contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: 32 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {searchCard}
+        {error ? <Text className="text-danger mb-3 text-center text-sm">{error}</Text> : null}
+        {roadmap ? (
+          <RoadmapDetail
+            roadmap={roadmap}
+            done={roadmap.steps.filter((s) => s.done).length}
+            loading={loading}
+            accent={accent}
+            onRefresh={() => {}}
+            onToggle={toggleStep}
+            hideRefresh
+          />
+        ) : (
+          <SectionCard>
+            <EmptyState
+              icon={GraduationCap}
+              title="Analyze your CV for a tailored plan"
+              description="Search above to explore any topic, or analyze your CV to get a roadmap built from your own skill gaps."
+              actionLabel="Add my CV"
+              onAction={() => router.push('/cv')}
+            />
+          </SectionCard>
+        )}
+      </ScrollView>
     );
   }
 
   const done = roadmap ? roadmap.steps.filter((s) => s.done).length : 0;
-  const progress = roadmap && roadmap.steps.length ? (done / roadmap.steps.length) * 100 : 0;
 
   return (
     <ScrollView
@@ -133,93 +198,134 @@ export default function RoadmapTab() {
         ) : null}
       </SectionCard>
 
+      {searchCard}
+
       {!roadmap ? (
         <SectionCard>
           <EmptyState
             icon={Sparkles}
-            title="Build your learning roadmap"
+            title="Build your recommended roadmap"
             description={`A step-by-step plan to grow into ${profile?.targetRole || analysis.detectedRole}, closing your highest-impact skill gaps.`}
           />
           {error ? <Text className="text-danger mb-3 text-center text-sm">{error}</Text> : null}
           <Button onPress={generate} isDisabled={loading}>
             {loading ? <Spinner size="sm" /> : <Sparkles color="#fff" size={18} />}
-            <Button.Label>{loading ? 'Building plan…' : 'Generate roadmap'}</Button.Label>
+            <Button.Label>
+              {loading ? 'Building plan…' : 'Generate recommended roadmap'}
+            </Button.Label>
           </Button>
         </SectionCard>
       ) : (
         <>
-          <SectionCard
-            title={`Path to ${roadmap.goalRole}`}
-            subtitle={`${done}/${roadmap.steps.length} complete · ~${roadmap.totalWeeks} weeks`}
-            className="mb-4"
-            right={
-              <Pressable onPress={generate} hitSlop={8} disabled={loading}>
-                {loading ? <Spinner size="sm" /> : <RefreshCw color={accent} size={18} />}
-              </Pressable>
-            }
-          >
-            <ProgressBar value={progress} />
-          </SectionCard>
-
           {error ? <Text className="text-danger mb-3 text-center text-sm">{error}</Text> : null}
-
-          {roadmap.steps.map((step, index) => (
-            <SectionCard key={step.id} className="mb-3">
-              <View className="flex-row items-start gap-3">
-                <Pressable
-                  onPress={() => toggleStep(step.id)}
-                  hitSlop={8}
-                  className={`mt-0.5 h-7 w-7 items-center justify-center rounded-full border-2 ${
-                    step.done ? 'bg-positive border-positive' : 'border-border'
-                  }`}
-                >
-                  {step.done ? (
-                    <Check color="#fff" size={16} />
-                  ) : (
-                    <Text className="text-muted text-xs font-bold">{index + 1}</Text>
-                  )}
-                </Pressable>
-                <View className="flex-1">
-                  <View className="flex-row items-center justify-between">
-                    <Text
-                      className={`flex-1 pr-2 text-base font-semibold ${
-                        step.done ? 'text-muted line-through' : 'text-foreground'
-                      }`}
-                    >
-                      {step.title}
-                    </Text>
-                    <Tag label={`${step.durationWeeks}w`} tone="brand" />
-                  </View>
-                  <Text className="text-muted mt-1 text-sm leading-5">{step.description}</Text>
-
-                  <View className="bg-violet-soft mt-2 flex-row items-center gap-1.5 rounded-lg px-2.5 py-1.5">
-                    <GraduationCap color={accent} size={14} />
-                    <Text className="text-violet flex-1 text-xs font-medium">{step.milestone}</Text>
-                  </View>
-
-                  {step.resources.length ? (
-                    <View className="mt-3 gap-2">
-                      {step.resources.map((res) => (
-                        <View key={res.title} className="flex-row items-center gap-2">
-                          <BookOpen color={accent} size={14} />
-                          <Text className="text-foreground flex-1 text-xs" numberOfLines={1}>
-                            {res.title}
-                            <Text className="text-muted">
-                              {' '}
-                              · {res.provider} · {res.estimatedHours}h
-                            </Text>
-                          </Text>
-                          <Tag label={res.type} tone={RESOURCE_TONE[res.type]} />
-                        </View>
-                      ))}
-                    </View>
-                  ) : null}
-                </View>
-              </View>
-            </SectionCard>
-          ))}
+          <RoadmapDetail
+            roadmap={roadmap}
+            done={done}
+            loading={loading}
+            accent={accent}
+            onRefresh={generate}
+            onToggle={toggleStep}
+          />
+          <Button variant="secondary" className="mt-1" onPress={generate} isDisabled={loading}>
+            {loading ? <Spinner size="sm" /> : <Sparkles color={accent} size={16} />}
+            <Button.Label>Regenerate from my CV</Button.Label>
+          </Button>
         </>
       )}
     </ScrollView>
+  );
+}
+
+function RoadmapDetail({
+  roadmap,
+  done,
+  loading,
+  accent,
+  onRefresh,
+  onToggle,
+  hideRefresh,
+}: {
+  roadmap: Roadmap;
+  done: number;
+  loading: boolean;
+  accent: string;
+  onRefresh: () => void;
+  onToggle: (stepId: string) => void;
+  hideRefresh?: boolean;
+}) {
+  const progress = roadmap.steps.length ? (done / roadmap.steps.length) * 100 : 0;
+  return (
+    <>
+      <SectionCard
+        title={`Path to ${roadmap.goalRole}`}
+        subtitle={`${done}/${roadmap.steps.length} complete · ~${roadmap.totalWeeks} weeks`}
+        className="mb-4"
+        right={
+          hideRefresh ? undefined : (
+            <Pressable onPress={onRefresh} hitSlop={8} disabled={loading}>
+              {loading ? <Spinner size="sm" /> : <RefreshCw color={accent} size={18} />}
+            </Pressable>
+          )
+        }
+      >
+        <ProgressBar value={progress} />
+      </SectionCard>
+
+      {roadmap.steps.map((step, index) => (
+        <SectionCard key={step.id} className="mb-3">
+          <View className="flex-row items-start gap-3">
+            <Pressable
+              onPress={() => onToggle(step.id)}
+              hitSlop={8}
+              className={`mt-0.5 h-7 w-7 items-center justify-center rounded-full border-2 ${
+                step.done ? 'bg-positive border-positive' : 'border-border'
+              }`}
+            >
+              {step.done ? (
+                <Check color="#fff" size={16} />
+              ) : (
+                <Text className="text-muted text-xs font-bold">{index + 1}</Text>
+              )}
+            </Pressable>
+            <View className="flex-1">
+              <View className="flex-row items-center justify-between">
+                <Text
+                  className={`flex-1 pr-2 text-base font-semibold ${
+                    step.done ? 'text-muted line-through' : 'text-foreground'
+                  }`}
+                >
+                  {step.title}
+                </Text>
+                <Tag label={`${step.durationWeeks}w`} tone="brand" />
+              </View>
+              <Text className="text-muted mt-1 text-sm leading-5">{step.description}</Text>
+
+              <View className="bg-violet-soft mt-2 flex-row items-center gap-1.5 rounded-lg px-2.5 py-1.5">
+                <GraduationCap color={accent} size={14} />
+                <Text className="text-violet flex-1 text-xs font-medium">{step.milestone}</Text>
+              </View>
+
+              {step.resources.length ? (
+                <View className="mt-3 gap-2">
+                  {step.resources.map((res) => (
+                    <View key={res.title} className="flex-row items-center gap-2">
+                      <BookOpen color={accent} size={14} />
+                      <Text className="text-foreground flex-1 text-xs" numberOfLines={1}>
+                        {res.title}
+                        <Text className="text-muted">
+                          {' '}
+                          · {res.provider} · {res.estimatedHours}h
+                        </Text>
+                      </Text>
+                      <Tag label={res.type} tone={RESOURCE_TONE[res.type]} />
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          </View>
+        </SectionCard>
+      ))}
+    </>
   );
 }

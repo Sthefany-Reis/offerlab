@@ -496,6 +496,120 @@ export function buildRoadmap(input: { analysis: CvAnalysis; goalRole: string }):
   });
 }
 
+// ---- buildTopicRoadmap ----------------------------------------------------
+// Generates a roadmap for any topic/role the user searches for, independent of
+// the CV skill gaps. Uses ROLE_DB core skills when the query maps to a known
+// role, otherwise builds a generic beginner→advanced learning path.
+
+const GENERIC_TRACK: { phase: string; weeks: number; detail: string }[] = [
+  {
+    phase: 'Fundamentals',
+    weeks: 3,
+    detail: 'Learn the core concepts, terminology and how the pieces fit together.',
+  },
+  {
+    phase: 'Hands-on basics',
+    weeks: 3,
+    detail: 'Follow guided tutorials and rebuild small examples from scratch.',
+  },
+  {
+    phase: 'Build a real project',
+    weeks: 4,
+    detail: 'Apply what you learned in an end-to-end project you can show others.',
+  },
+  {
+    phase: 'Advanced topics',
+    weeks: 3,
+    detail: 'Go deeper into edge cases, performance and best practices.',
+  },
+  {
+    phase: 'Portfolio & proof',
+    weeks: 2,
+    detail: 'Polish your work, document it, and prepare to talk about it confidently.',
+  },
+];
+
+export function buildTopicRoadmap(input: { query: string }): Promise<Roadmap> {
+  return compute(() => {
+    const query = input.query.trim();
+    if (query.length < 2) {
+      throw new OpenAIError('Type what you want to learn, e.g. a skill or a role.');
+    }
+
+    const lower = query.toLowerCase();
+    const skillSet = new Set(detectSkills(query));
+    const matchedRole = ROLE_DB.find(
+      (r) => r.keywords.some((k) => lower.includes(k)) || lower.includes(r.role.toLowerCase()),
+    );
+
+    // Prefer explicit skills in the query, then role core skills, then generic.
+    let skills: string[] = [...skillSet];
+    if (matchedRole) skills = uniq([...skills, ...matchedRole.coreSkills]);
+    skills = skills.slice(0, 6);
+
+    const goalRole = matchedRole ? matchedRole.role : titleCase(query);
+    const templates = RESOURCE_TEMPLATES.default;
+
+    const steps: Roadmap['steps'] = skills.length
+      ? skills.map((skill, i) => {
+          const weeks = i < 2 ? 3 : 2;
+          return {
+            id: uid(),
+            title: `Learn ${skill}`,
+            skill,
+            description: `Build practical ${skill} skills for ${goalRole}: start with fundamentals, then apply them in a focused exercise.`,
+            durationWeeks: weeks,
+            milestone: `Complete a small project that demonstrates ${skill}.`,
+            resources: [
+              {
+                title: `${skill} fundamentals`,
+                type: templates[i % templates.length].type,
+                provider: templates[i % templates.length].provider,
+                estimatedHours: weeks * 6,
+              },
+              {
+                title: `Practice ${skill} with a mini-project`,
+                type: 'project',
+                provider: 'Self-directed',
+                estimatedHours: weeks * 4,
+              },
+            ],
+            done: false,
+          };
+        })
+      : GENERIC_TRACK.map((phase) => ({
+          id: uid(),
+          title: `${phase.phase}: ${goalRole}`,
+          skill: goalRole,
+          description: phase.detail,
+          durationWeeks: phase.weeks,
+          milestone: `Finish the "${phase.phase}" stage with something you can point to.`,
+          resources: [
+            {
+              title: `${goalRole} ${phase.phase.toLowerCase()}`,
+              type: 'course',
+              provider: 'Coursera',
+              estimatedHours: phase.weeks * 6,
+            },
+            {
+              title: `${goalRole} practice`,
+              type: 'practice',
+              provider: 'Self-directed',
+              estimatedHours: phase.weeks * 4,
+            },
+          ],
+          done: false,
+        }));
+
+    return {
+      goalRole,
+      totalWeeks: steps.reduce((sum, s) => sum + s.durationWeeks, 0),
+      createdAt: Date.now(),
+      steps,
+    } satisfies Roadmap;
+  });
+}
+
 // ---- tailorApplication ----------------------------------------------------
 
 export function tailorApplication(input: {
