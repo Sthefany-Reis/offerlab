@@ -49,8 +49,12 @@ export default function CvScreen() {
         setSourceName(doc.name);
         if (doc.warning) setWarning(doc.warning);
       }
-    } catch {
-      setError('Could not read that file. Try pasting your CV text instead.');
+    } catch (e) {
+      setError(
+        e instanceof Error && e.message
+          ? `Could not read that file (${e.message}). Try pasting your CV text instead.`
+          : 'Could not read that file. Try pasting your CV text instead.',
+      );
     } finally {
       setPicking(false);
     }
@@ -185,9 +189,21 @@ export default function CvScreen() {
               ) : null}
 
               {rawText.trim().length > 0 ? (
-                <Text className="text-muted mt-2 text-xs">
-                  {rawText.trim().length} characters extracted
-                </Text>
+                <View className="mt-3">
+                  <Text className="text-muted mb-1.5 text-xs">
+                    {rawText.trim().length} characters extracted · review and edit
+                  </Text>
+                  <TextField>
+                    <TextArea
+                      placeholder="Extracted CV text appears here…"
+                      value={rawText}
+                      onChangeText={setRawText}
+                      multiline
+                      className="min-h-44"
+                      style={{ minHeight: 176, textAlignVertical: 'top' }}
+                    />
+                  </TextField>
+                </View>
               ) : null}
             </View>
           )}
