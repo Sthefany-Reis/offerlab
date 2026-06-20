@@ -23,6 +23,19 @@ function uid(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+const MAX_ATTEMPTS = 4;
+
+function parseRetryAfterMs(headerValue: string | null): number | undefined {
+  if (!headerValue) return undefined;
+  const seconds = Number(headerValue);
+  if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
+  return undefined;
+}
+
 function extractJson(text: string): string {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fenced?.[1]) return fenced[1].trim();
@@ -46,25 +59,56 @@ async function chatJson<T>(messages: ChatMessage[]): Promise<T> {
     .map((m) => m.content)
     .join('\n\n');
 
-  let response: Response;
-  try {
-    response = await fetch(ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': API_KEY,
-      },
-      body: JSON.stringify({
-        systemInstruction: systemText ? { parts: [{ text: systemText }] } : undefined,
-        contents: [{ role: 'user', parts: [{ text: userText }] }],
-        generationConfig: {
-          temperature: 0.5,
-          maxOutputTokens: 4096,
-          responseMimeType: 'application/json',
+  const body = JSON.stringify({
+    systemInstruction: systemText ? { parts: [{ text: systemText }] } : undefined,
+    contents: [{ role: 'user', parts: [{ text: userText }] }],
+    generationConfig: {
+      temperature: 0.5,
+      maxOutputTokens: 4096,
+      responseMimeType: 'application/json',
+    },
+  });
+
+  let response: Response | undefined;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      response = await fetch(ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': API_KEY,
         },
-      }),
-    });
-  } catch {
+        body,
+      });
+    } catch {
+      // Network error: retry a couple of times before giving up.
+      if (attempt < MAX_ATTEMPTS) {
+        await sleep(600 * attempt);
+        continue;
+      }
+      throw new OpenAIError('Network error reaching Gemini. Check your connection and try again.');
+    }
+
+    // Retry on rate limit (429) and transient server errors (500/502/503/504).
+    const isTransient =
+      response.status === 429 ||
+      response.status === 500 ||
+      response.status === 502 ||
+      response.status === 503 ||
+      response.status === 504;
+
+    if (isTransient && attempt < MAX_ATTEMPTS) {
+      const retryAfter = parseRetryAfterMs(response.headers.get('retry-after'));
+      // Exponential backoff with jitter, capped, honoring Retry-After when present.
+      const backoff = Math.min(2 ** (attempt - 1) * 1000, 8000) + Math.floor(Math.random() * 400);
+      await sleep(retryAfter ?? backoff);
+      continue;
+    }
+
+    break;
+  }
+
+  if (!response) {
     throw new OpenAIError('Network error reaching Gemini. Check your connection and try again.');
   }
 
@@ -73,7 +117,9 @@ async function chatJson<T>(messages: ChatMessage[]): Promise<T> {
     if (response.status === 400 || response.status === 401 || response.status === 403)
       throw new OpenAIError('Invalid Gemini API key.');
     if (response.status === 429)
-      throw new OpenAIError('Gemini rate limit reached. Try again shortly.');
+      throw new OpenAIError(
+        'Gemini rate limit reached. The free tier allows a limited number of requests per minute — wait about a minute and try again.',
+      );
     throw new OpenAIError(`Gemini request failed (${response.status}). ${text.slice(0, 120)}`);
   }
 
