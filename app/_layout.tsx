@@ -24,6 +24,9 @@ import {
 
 import { initPostHog } from '@/lib/posthog';
 import { reportErrorToParent } from '@/lib/reportPreviewError';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient();
 
 /**
  * Custom ErrorBoundary that reports React render errors to the parent window (Bilt preview iframe)
@@ -134,11 +137,18 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <HeroUINativeProvider>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ title: 'Habits', headerShown: false }} />
-        </Stack>
-      </HeroUINativeProvider>
+      <QueryClientProvider client={queryClient}>
+        <HeroUINativeProvider>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="cv" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="application/new" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="application/[id]" />
+            <Stack.Screen name="interview/new" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="interview/[id]" />
+          </Stack>
+        </HeroUINativeProvider>
+      </QueryClientProvider>
     </GestureHandlerRootView>
   );
 }
