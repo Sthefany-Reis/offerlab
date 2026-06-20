@@ -5,7 +5,10 @@ import {
   MessagesSquare,
   Send,
   Sparkles,
+  Target,
   TrendingUp,
+  Users,
+  Wand2,
 } from 'lucide-react-native';
 import { Text, useThemeColor } from 'heroui-native';
 import { Image, Pressable, ScrollView, View } from 'react-native';
@@ -135,6 +138,46 @@ export default function Dashboard() {
             </View>
           </View>
 
+          <Pressable onPress={() => router.push('/matches')} className="mb-4">
+            <SectionCard>
+              <View className="flex-row items-center gap-3">
+                <View className="bg-brand-soft h-11 w-11 items-center justify-center rounded-xl">
+                  <Target color={accent} size={22} />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-foreground text-sm font-semibold">
+                    Jobs you qualify for
+                  </Text>
+                  <Text className="text-muted text-xs">
+                    Roles that fit your CV + skills to improve
+                  </Text>
+                </View>
+                <ArrowRight color={accent} size={18} />
+              </View>
+            </SectionCard>
+          </Pressable>
+
+          {analysis.overallScore < 70 ? (
+            <Pressable onPress={() => router.push('/cv-rebuild')} className="mb-4">
+              <SectionCard>
+                <View className="flex-row items-center gap-3">
+                  <View className="bg-caution-soft h-11 w-11 items-center justify-center rounded-xl">
+                    <Wand2 color="#9a6a00" size={22} />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-foreground text-sm font-semibold">
+                      Rebuild a stronger CV
+                    </Text>
+                    <Text className="text-muted text-xs">
+                      Your CV scored {analysis.overallScore}/100 — let AI improve it
+                    </Text>
+                  </View>
+                  <ArrowRight color={accent} size={18} />
+                </View>
+              </SectionCard>
+            </Pressable>
+          ) : null}
+
           {roadmap ? (
             <SectionCard
               title="Learning roadmap"
@@ -156,6 +199,18 @@ export default function Dashboard() {
 
       <Text className="text-foreground mt-1 mb-2 text-base font-semibold">Quick actions</Text>
       <View className="gap-3">
+        <ActionRow
+          icon={Target}
+          title="Jobs you qualify for"
+          subtitle="Match your CV to roles"
+          onPress={() => router.push('/matches')}
+        />
+        <ActionRow
+          icon={Wand2}
+          title="Rebuild my CV"
+          subtitle="AI-improved, structured CV"
+          onPress={() => router.push('/cv-rebuild')}
+        />
         <ActionRow
           icon={FileText}
           title="CV & analysis"
@@ -179,6 +234,12 @@ export default function Dashboard() {
           title="Interview prep"
           subtitle="Practice and get feedback"
           onPress={() => router.push('/interview')}
+        />
+        <ActionRow
+          icon={Users}
+          title="Chat with specialists"
+          subtitle="Mentor advice + LinkedIn"
+          onPress={() => router.push('/specialists')}
         />
       </View>
     </ScrollView>

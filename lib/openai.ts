@@ -1,10 +1,14 @@
 import type {
+  ChatMessage as SpecialistChatMessage,
   CvAnalysis,
   InterviewAnswerFeedback,
   InterviewQuestion,
   InterviewSession,
   JobApplication,
+  JobMatchResult,
+  RebuiltCv,
   Roadmap,
+  Specialist,
 } from '@/lib/types';
 
 const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
@@ -369,4 +373,195 @@ Return JSON exactly:
     suggestedAnswer: string;
   }>(messages);
   return { questionId: input.question.id, userAnswer: input.answer, ...raw };
+}
+
+export async function matchJobs(input: {
+  analysis: CvAnalysis;
+  rawCv: string;
+  targetRole: string;
+}): Promise<JobMatchResult> {
+  const messages: ChatMessage[] = [
+    { role: 'system', content: ANALYST_SYSTEM },
+    {
+      role: 'user',
+      content: `Assess which roles this candidate currently qualifies for based on their CV, and compare against their desired target role "${
+        input.targetRole || input.analysis.detectedRole
+      }".
+Detected role: ${input.analysis.detectedRole}. Seniority: ${input.analysis.seniority}.
+Current skills: ${input.analysis.currentSkills.join(', ')}.
+CV:
+"""
+${input.rawCv.slice(0, 6000)}
+"""
+
+Important rules:
+- "bestFitRole" is the role the candidate is strongest for RIGHT NOW.
+- "alignedWithTarget" is true only if bestFitRole is essentially the same as the target role "${input.targetRole}".
+- If the candidate is a better fit for a different role than their target, set "alignedWithTarget" to false and fill "targetGapPlan" with concrete certifications and skills required to reach the desired target role. If they are already aligned, set "targetGapPlan" to null.
+
+Return JSON exactly:
+{
+  "bestFitRole": string,
+  "alignedWithTarget": boolean,
+  "qualifiedJobs": [{
+    "role": string,
+    "matchScore": number (0-100),
+    "reason": string,
+    "matchingSkills": string[] (3-6),
+    "exampleTitles": string[] (2-3 concrete job titles to search for)
+  }] (3-5, ordered by matchScore desc),
+  "skillsToImprove": [{
+    "skill": string,
+    "importance": "critical"|"high"|"medium"|"low",
+    "why": string,
+    "howToLearn": string
+  }] (3-6),
+  "targetGapPlan": {
+    "targetRole": string,
+    "readiness": number (0-100),
+    "verdict": string,
+    "certifications": [{ "name": string, "provider": string, "why": string }] (1-4),
+    "skills": string[] (3-6)
+  } | null
+}`,
+    },
+  ];
+  const raw = await chatJson<Omit<JobMatchResult, 'createdAt'>>(messages);
+  return { ...raw, createdAt: Date.now() };
+}
+
+export async function rebuildCv(input: {
+  analysis: CvAnalysis;
+  rawCv: string;
+  fullName: string;
+  targetRole: string;
+}): Promise<RebuiltCv> {
+  const messages: ChatMessage[] = [
+    { role: 'system', content: ANALYST_SYSTEM },
+    {
+      role: 'user',
+      content: `Rewrite this candidate's CV into a clean, well-structured, ATS-friendly format optimized for the role "${
+        input.targetRole || input.analysis.detectedRole
+      }". Keep all real facts from the original; do not invent employers, dates or degrees. Strengthen wording, quantify impact where the original implies it, and fix structure.
+Candidate name: ${input.fullName || 'the candidate'}.
+Original CV:
+"""
+${input.rawCv.slice(0, 7000)}
+"""
+
+Return JSON exactly:
+{
+  "headline": string (target role / professional title),
+  "summary": string (3-4 sentence professional summary),
+  "sections": [{
+    "heading": string (e.g. "Experience", "Skills", "Education", "Projects"),
+    "bullets": string[] (concise, achievement-focused lines)
+  }] (3-5 sections),
+  "improvements": string[] (3-6 specific things you improved vs the original)
+}`,
+    },
+  ];
+  const raw = await chatJson<Omit<RebuiltCv, 'createdAt'>>(messages);
+  return { ...raw, createdAt: Date.now() };
+}
+
+export async function chatWithSpecialist(input: {
+  specialist: Specialist;
+  history: SpecialistChatMessage[];
+  analysis: CvAnalysis | null;
+  targetRole: string;
+}): Promise<string> {
+  if (!API_KEY) {
+    throw new OpenAIError('Missing Gemini API key. Add EXPO_PUBLIC_GEMINI_API_KEY.');
+  }
+
+  const context = input.analysis
+    ? `The person you are advising is a ${input.analysis.detectedRole} (${input.analysis.seniority}) aiming for "${
+        input.targetRole || input.analysis.detectedRole
+      }". Their strengths: ${input.analysis.topStrengths.join(', ')}. Skill gaps: ${input.analysis.skillGaps
+        .map((g) => g.skill)
+        .join(', ')}.`
+    : 'You do not yet have details about this person — ask brief clarifying questions when useful.';
+
+  const systemText = `You are ${input.specialist.name}, ${input.specialist.title} specializing in ${input.specialist.field}. Expertise: ${input.specialist.expertise.join(
+    ', ',
+  )}. ${input.specialist.bio} You are mentoring someone over chat. ${context} Reply in a warm, concise, practical first-person voice (2-5 short sentences). Give specific, actionable advice. Do not use markdown headers or bullet symbols.`;
+
+  const historyText = input.history
+    .map((m) => `${m.role === 'user' ? 'Mentee' : input.specialist.name}: ${m.text}`)
+    .join('\n');
+
+  const body = JSON.stringify({
+    systemInstruction: { parts: [{ text: systemText }] },
+    contents: [{ role: 'user', parts: [{ text: historyText }] }],
+    generationConfig: { temperature: 0.7, maxOutputTokens: 600 },
+  });
+
+  let response: Response | undefined;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      response = await fetch(ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': API_KEY },
+        body,
+      });
+    } catch {
+      if (attempt < MAX_ATTEMPTS) {
+        await sleep(600 * attempt);
+        continue;
+      }
+      throw new OpenAIError('Network error reaching Gemini. Check your connection and try again.');
+    }
+
+    const isTransient =
+      response.status === 429 ||
+      response.status === 500 ||
+      response.status === 502 ||
+      response.status === 503 ||
+      response.status === 504;
+    if (isTransient && attempt < MAX_ATTEMPTS) {
+      const retryAfter = parseRetryAfterMs(response.headers.get('retry-after'));
+      const backoff = Math.min(2 ** (attempt - 1) * 1000, 8000) + Math.floor(Math.random() * 400);
+      await sleep(retryAfter ?? backoff);
+      continue;
+    }
+    break;
+  }
+
+  if (!response) {
+    throw new OpenAIError('Network error reaching Gemini. Check your connection and try again.');
+  }
+  if (!response.ok) {
+    if (response.status === 400 || response.status === 401 || response.status === 403)
+      throw new OpenAIError('Invalid Gemini API key.');
+    if (response.status === 429)
+      throw new OpenAIError('Rate limit reached. Wait about a minute and try again.');
+    throw new OpenAIError(`Request failed (${response.status}).`);
+  }
+
+  const raw = (await response.json()) as unknown;
+  let content: string | undefined;
+  if (
+    typeof raw === 'object' &&
+    raw !== null &&
+    'candidates' in raw &&
+    Array.isArray(raw.candidates) &&
+    raw.candidates.length > 0 &&
+    typeof raw.candidates[0] === 'object' &&
+    raw.candidates[0] !== null &&
+    'content' in raw.candidates[0] &&
+    typeof raw.candidates[0].content === 'object' &&
+    raw.candidates[0].content !== null &&
+    'parts' in raw.candidates[0].content &&
+    Array.isArray(raw.candidates[0].content.parts) &&
+    raw.candidates[0].content.parts.length > 0 &&
+    typeof raw.candidates[0].content.parts[0] === 'object' &&
+    raw.candidates[0].content.parts[0] !== null &&
+    'text' in raw.candidates[0].content.parts[0] &&
+    typeof raw.candidates[0].content.parts[0].text === 'string'
+  ) {
+    content = raw.candidates[0].content.parts[0].text;
+  }
+  if (!content) throw new OpenAIError('The specialist did not respond. Please try again.');
+  return content.trim();
 }

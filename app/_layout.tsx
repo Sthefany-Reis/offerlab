@@ -142,11 +142,14 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="cv" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="cv-rebuild" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="matches/index" options={{ presentation: 'modal' }} />
             <Stack.Screen name="application/new" options={{ presentation: 'modal' }} />
             <Stack.Screen name="application/[id]" />
             <Stack.Screen name="jobs/index" options={{ presentation: 'modal' }} />
             <Stack.Screen name="interview/new" options={{ presentation: 'modal' }} />
             <Stack.Screen name="interview/[id]" />
+            <Stack.Screen name="specialist/[id]" />
           </Stack>
         </HeroUINativeProvider>
       </QueryClientProvider>

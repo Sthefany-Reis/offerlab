@@ -1,4 +1,4 @@
-import { Briefcase, Plus, Search, Send } from 'lucide-react-native';
+import { Briefcase, Plus, Search, Send, Target } from 'lucide-react-native';
 import { Button, Text, useThemeColor } from 'heroui-native';
 import { Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
@@ -59,13 +59,16 @@ export default function ApplicationsTab() {
             <EmptyState
               icon={Briefcase}
               title="No applications yet"
-              description="Search live jobs or paste a job description, and OfferLab tailors your CV, writes a cover letter and scores your match."
-              actionLabel="Search live jobs"
-              onAction={() => router.push('/jobs')}
+              description="See roles you qualify for, search live jobs, or paste a job description — OfferLab tailors your CV, writes a cover letter and scores your match."
+              actionLabel="Jobs you qualify for"
+              onAction={() => router.push('/matches')}
             />
+            <Button variant="secondary" className="mt-1" onPress={() => router.push('/jobs')}>
+              <Button.Label>Search live jobs</Button.Label>
+            </Button>
             <Button
               variant="tertiary"
-              className="mt-1"
+              className="mt-2"
               onPress={() => router.push('/application/new')}
             >
               <Button.Label>Paste a job description</Button.Label>
@@ -108,14 +111,24 @@ export default function ApplicationsTab() {
           className="absolute inset-x-0 bottom-0 gap-2 px-4"
           style={{ paddingBottom: insets.bottom + 12 }}
         >
-          <Button onPress={() => router.push('/jobs')}>
-            <Search color="#fff" size={18} />
-            <Button.Label>Search live jobs</Button.Label>
+          <Button onPress={() => router.push('/matches')}>
+            <Target color="#fff" size={18} />
+            <Button.Label>Jobs you qualify for</Button.Label>
           </Button>
-          <Button variant="tertiary" onPress={() => router.push('/application/new')}>
-            <Plus color={foreground} size={18} />
-            <Button.Label>Paste a job description</Button.Label>
-          </Button>
+          <View className="flex-row gap-2">
+            <Button className="flex-1" variant="secondary" onPress={() => router.push('/jobs')}>
+              <Search color={foreground} size={18} />
+              <Button.Label>Search jobs</Button.Label>
+            </Button>
+            <Button
+              className="flex-1"
+              variant="tertiary"
+              onPress={() => router.push('/application/new')}
+            >
+              <Plus color={foreground} size={18} />
+              <Button.Label>Paste JD</Button.Label>
+            </Button>
+          </View>
         </View>
       ) : null}
     </View>

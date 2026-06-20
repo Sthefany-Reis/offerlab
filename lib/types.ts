@@ -112,3 +112,70 @@ export interface CvProfile {
   sourceName: string; // file name or "Pasted text"
   updatedAt: number;
 }
+
+// A role the candidate already qualifies for, derived from their CV.
+export interface QualifiedJob {
+  role: string;
+  matchScore: number; // 0-100 how well the CV fits this role
+  reason: string;
+  matchingSkills: string[];
+  exampleTitles: string[]; // concrete job titles to search for
+}
+
+// Skills/certs the candidate should improve to be more competitive overall.
+export interface SkillToImprove {
+  skill: string;
+  importance: 'critical' | 'high' | 'medium' | 'low';
+  why: string;
+  howToLearn: string;
+}
+
+// When the CV is a stronger fit for a different role than the target,
+// this explains what's needed to reach the desired target role.
+export interface TargetGapPlan {
+  targetRole: string;
+  readiness: number; // 0-100 readiness for the desired target role
+  verdict: string; // one-line honest assessment
+  certifications: { name: string; provider: string; why: string }[];
+  skills: string[];
+}
+
+export interface JobMatchResult {
+  bestFitRole: string; // role the CV is strongest for right now
+  alignedWithTarget: boolean; // is bestFitRole ~ the user's target role?
+  qualifiedJobs: QualifiedJob[];
+  skillsToImprove: SkillToImprove[];
+  targetGapPlan: TargetGapPlan | null; // present when target differs from best fit
+  createdAt: number;
+}
+
+export interface RebuiltCvSection {
+  heading: string;
+  bullets: string[];
+}
+
+export interface RebuiltCv {
+  headline: string; // e.g. "Senior Product Designer"
+  summary: string;
+  sections: RebuiltCvSection[]; // Experience, Skills, Education, etc.
+  improvements: string[]; // what was fixed vs the original
+  createdAt: number;
+}
+
+export interface Specialist {
+  id: string;
+  name: string;
+  title: string;
+  field: string;
+  expertise: string[];
+  bio: string;
+  avatarColor: string; // tailwind bg class
+  linkedinUrl: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'specialist';
+  text: string;
+  createdAt: number;
+}

@@ -1,7 +1,7 @@
 import { Briefcase, MapPin, Search, Sparkles, X } from 'lucide-react-native';
 import { Button, Spinner, Text, useThemeColor } from 'heroui-native';
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { EmptyState } from '@/components/EmptyState';
@@ -12,10 +12,14 @@ import { useStore } from '@/lib/store';
 
 export default function JobSearchScreen() {
   const [muted, accent] = useThemeColor(['muted', 'accent']);
+  const params = useLocalSearchParams();
   const analysis = useStore((s) => s.analysis);
   const profile = useStore((s) => s.profile);
 
-  const [query, setQuery] = useState(profile?.targetRole ?? '');
+  const initialQuery = Array.isArray(params.q)
+    ? (params.q[0] ?? '')
+    : (params.q ?? profile?.targetRole ?? '');
+  const [query, setQuery] = useState(initialQuery);
   const [location, setLocation] = useState('');
   const [results, setResults] = useState<JobListing[]>([]);
   const [loading, setLoading] = useState(false);
@@ -49,9 +53,9 @@ export default function JobSearchScreen() {
   }, []);
 
   useEffect(() => {
-    void runSearch(profile?.targetRole ?? '', '');
+    void runSearch(initialQuery, '');
     return () => abortRef.current?.abort();
-  }, [runSearch, profile?.targetRole]);
+  }, [runSearch, initialQuery]);
 
   const openTailor = (job: JobListing) => {
     if (!analysis) {

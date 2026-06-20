@@ -4,11 +4,14 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import type {
   ApplicationStatus,
+  ChatMessage,
   CvAnalysis,
   CvProfile,
   InterviewAnswerFeedback,
   InterviewSession,
   JobApplication,
+  JobMatchResult,
+  RebuiltCv,
   Roadmap,
   RoadmapStep,
 } from '@/lib/types';
@@ -21,12 +24,21 @@ interface OfferLabState {
   roadmap: Roadmap | null;
   applications: JobApplication[];
   sessions: InterviewSession[];
+  matchResult: JobMatchResult | null;
+  rebuiltCv: RebuiltCv | null;
+  chats: Record<string, ChatMessage[]>;
 
   setProfile: (profile: CvProfile) => void;
   clearProfile: () => void;
   setAnalysis: (analysis: CvAnalysis) => void;
   setRoadmap: (roadmap: Roadmap) => void;
   toggleRoadmapStep: (stepId: string) => void;
+
+  setMatchResult: (result: JobMatchResult) => void;
+  setRebuiltCv: (cv: RebuiltCv) => void;
+
+  addChatMessage: (specialistId: string, message: ChatMessage) => void;
+  clearChat: (specialistId: string) => void;
 
   addApplication: (application: JobApplication) => void;
   updateApplicationStatus: (id: string, status: ApplicationStatus) => void;
@@ -49,9 +61,13 @@ export const useStore = create<OfferLabState>()(
       roadmap: null,
       applications: [],
       sessions: [],
+      matchResult: null,
+      rebuiltCv: null,
+      chats: {},
 
       setProfile: (profile) => set({ profile }),
-      clearProfile: () => set({ profile: null, analysis: null }),
+      clearProfile: () =>
+        set({ profile: null, analysis: null, matchResult: null, rebuiltCv: null }),
       setAnalysis: (analysis) => set({ analysis }),
       setRoadmap: (roadmap) => set({ roadmap }),
       toggleRoadmapStep: (stepId) =>
@@ -61,6 +77,23 @@ export const useStore = create<OfferLabState>()(
             step.id === stepId ? { ...step, done: !step.done } : step,
           );
           return { roadmap: { ...state.roadmap, steps } };
+        }),
+
+      setMatchResult: (matchResult) => set({ matchResult }),
+      setRebuiltCv: (rebuiltCv) => set({ rebuiltCv }),
+
+      addChatMessage: (specialistId, message) =>
+        set((state) => ({
+          chats: {
+            ...state.chats,
+            [specialistId]: [...(state.chats[specialistId] ?? []), message],
+          },
+        })),
+      clearChat: (specialistId) =>
+        set((state) => {
+          const next = { ...state.chats };
+          delete next[specialistId];
+          return { chats: next };
         }),
 
       addApplication: (application) =>
@@ -97,6 +130,9 @@ export const useStore = create<OfferLabState>()(
           roadmap: null,
           applications: [],
           sessions: [],
+          matchResult: null,
+          rebuiltCv: null,
+          chats: {},
         }),
     }),
     {
@@ -108,6 +144,9 @@ export const useStore = create<OfferLabState>()(
         roadmap: state.roadmap,
         applications: state.applications,
         sessions: state.sessions,
+        matchResult: state.matchResult,
+        rebuiltCv: state.rebuiltCv,
+        chats: state.chats,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated();

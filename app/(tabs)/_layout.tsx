@@ -1,4 +1,4 @@
-import { GraduationCap, Home, MessagesSquare, Send, User } from 'lucide-react-native';
+import { GraduationCap, Home, MessagesSquare, Send, User, Users } from 'lucide-react-native';
 import { Tabs } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useThemeColor } from 'heroui-native';
@@ -60,6 +60,13 @@ export default function TabLayout() {
           options={{
             title: 'Interview',
             tabBarIcon: ({ color, size }) => <MessagesSquare color={color} size={size ?? 24} />,
+          }}
+        />
+        <Tabs.Screen
+          name="specialists"
+          options={{
+            title: 'Mentors',
+            tabBarIcon: ({ color, size }) => <Users color={color} size={size ?? 24} />,
           }}
         />
         <Tabs.Screen
