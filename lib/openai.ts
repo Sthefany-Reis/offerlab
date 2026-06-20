@@ -9,7 +9,7 @@ import type {
 
 const API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
 const ENDPOINT = 'https://api.openai.com/v1/chat/completions';
-const MODEL = 'gpt-4o-mini';
+const MODEL = 'gpt-4o';
 
 export class OpenAIError extends Error {}
 
