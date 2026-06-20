@@ -8,7 +8,7 @@ import {
   TrendingUp,
 } from 'lucide-react-native';
 import { Text, useThemeColor } from 'heroui-native';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Image, Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -19,6 +19,8 @@ import { SectionCard } from '@/components/SectionCard';
 import { Tag } from '@/components/Tag';
 import { formatSalary } from '@/lib/format';
 import { useStore } from '@/lib/store';
+
+const logo = require('@/assets/offerlab-logo.png');
 
 export default function Dashboard() {
   const insets = useSafeAreaInsets();
@@ -43,15 +45,25 @@ export default function Dashboard() {
       showsVerticalScrollIndicator={false}
     >
       <View className="mb-5 flex-row items-center justify-between">
-        <View>
-          <View className="flex-row items-center gap-1.5">
-            <Sparkles color={accent} size={18} />
-            <Text className="text-brand text-sm font-bold">OfferLab</Text>
+        <View className="flex-1">
+          <View className="flex-row items-center gap-2">
+            <Image
+              source={logo}
+              style={{ width: 26, height: 26 }}
+              resizeMode="contain"
+              accessibilityLabel="OfferLab logo"
+            />
+            <Text className="text-sm font-bold">
+              <Text className="text-navy text-sm font-bold">Offer</Text>
+              <Text className="text-emerald text-sm font-bold">Lab</Text>
+            </Text>
           </View>
           <Text className="text-foreground mt-1 text-2xl font-bold">
             {profile?.fullName ? `Hi, ${profile.fullName.split(' ')[0]}` : 'Welcome'}
           </Text>
-          <Text className="text-muted text-sm">Your AI career copilot</Text>
+          <Text className="text-muted text-[11px] font-semibold tracking-[1.5px] uppercase">
+            Experiment. Optimize. Land your next offer.
+          </Text>
         </View>
         {analysis ? <ScoreRing score={analysis.overallScore} label="CV score" size={72} /> : null}
       </View>

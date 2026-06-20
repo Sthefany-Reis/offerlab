@@ -17,6 +17,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
     scheme: 'offerlab',
+    icon: './assets/offerlab-logo.png',
     runtimeVersion: {
       policy: 'appVersion',
     },

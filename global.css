@@ -36,8 +36,8 @@
     --radius: 0.75rem;
     --field-radius: calc(var(--radius) * 1.2);
 
-    --background: oklch(0.98 0.004 285);
-    --foreground: oklch(0.23 0.03 277);
+    --background: oklch(0.985 0.004 250);
+    --foreground: oklch(0.24 0.06 264);
 
     --surface: var(--white);
     --surface-foreground: var(--foreground);
@@ -45,13 +45,13 @@
     --overlay: var(--white);
     --overlay-foreground: var(--foreground);
 
-    --muted: oklch(0.55 0.02 285);
+    --muted: oklch(0.52 0.03 264);
     --scrollbar: oklch(87.1% 0.006 286.286);
 
-    --default: oklch(0.95 0.01 285);
+    --default: oklch(0.95 0.012 264);
     --default-foreground: var(--eclipse);
 
-    --accent: oklch(0.53 0.21 277);
+    --accent: oklch(0.52 0.21 280);
     --accent-foreground: var(--snow);
 
     --field-background: var(--white);
@@ -59,8 +59,8 @@
     --field-placeholder: var(--muted);
     --field-border: transparent;
 
-    --success: oklch(0.7329 0.1935 150.81);
-    --success-foreground: var(--eclipse);
+    --success: oklch(0.72 0.16 158);
+    --success-foreground: var(--snow);
 
     --warning: oklch(0.7819 0.1585 72.33);
     --warning-foreground: var(--eclipse);
@@ -71,8 +71,8 @@
     --segment: var(--white);
     --segment-foreground: var(--eclipse);
 
-    --border: oklch(0.92 0.006 286);
-    --separator: oklch(0.92 0.006 286);
+    --border: oklch(0.91 0.008 264);
+    --separator: oklch(0.91 0.008 264);
     --focus: var(--accent);
     --link: var(--accent);
 
@@ -91,16 +91,22 @@
 
 @layer theme {
   @theme {
-    --color-brand: oklch(0.53 0.21 277);
-    --color-brand-soft: oklch(0.95 0.03 277);
-    --color-violet: oklch(0.58 0.22 300);
-    --color-violet-soft: oklch(0.95 0.04 300);
-    --color-positive: oklch(0.7329 0.1935 150.81);
-    --color-positive-soft: oklch(0.95 0.05 150);
+    /* OfferLab brand palette derived from the logo */
+    --color-navy: oklch(0.24 0.06 264);
+    --color-brand: oklch(0.52 0.21 280);
+    --color-brand-soft: oklch(0.95 0.04 280);
+    --color-violet: oklch(0.52 0.22 292);
+    --color-violet-soft: oklch(0.95 0.04 292);
+    --color-blue: oklch(0.56 0.19 255);
+    --color-blue-soft: oklch(0.95 0.04 255);
+    --color-positive: oklch(0.72 0.16 158);
+    --color-positive-soft: oklch(0.95 0.06 158);
+    --color-emerald: oklch(0.72 0.16 158);
+    --color-emerald-soft: oklch(0.95 0.06 158);
     --color-caution: oklch(0.7819 0.1585 72.33);
     --color-caution-soft: oklch(0.96 0.06 80);
-    --color-info: oklch(0.62 0.16 233);
-    --color-info-soft: oklch(0.95 0.04 233);
+    --color-info: oklch(0.56 0.19 255);
+    --color-info-soft: oklch(0.95 0.04 255);
   }
 }
 
